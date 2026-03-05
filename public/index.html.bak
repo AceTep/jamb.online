@@ -177,10 +177,8 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 .die.held{background:var(--die-held-bg);border-color:var(--die-held-bdr);box-shadow:0 0 0 2px rgba(184,134,11,.2),0 3px 10px var(--sh)}
 .die.die-dim{opacity:.4;cursor:default;pointer-events:none}
 .die.rolling{animation:droll .28s ease}
-.die.die-inactive{opacity:.38;border-color:var(--muted);background:var(--s2);position:relative}
-.die-inactive-x{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;color:var(--muted);pointer-events:none;font-weight:900;opacity:.7}
 @keyframes droll{0%{transform:rotate(0)scale(1)}30%{transform:rotate(-13deg)scale(1.1)}70%{transform:rotate(11deg)scale(1.1)}100%{transform:rotate(0)scale(1)}}
-.hold-lbl{margin:10px;position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:7px;color:var(--gold);letter-spacing:1px;white-space:nowrap}
+.hold-lbl{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:7px;color:var(--gold);letter-spacing:1px;white-space:nowrap}
 .die svg{width:40px;height:40px}
 .die-dot{fill:var(--die-dot)}
 .roll-btn{background:var(--gold);color:#fff;border:none;border-radius:8px;padding:11px 20px;font-family:'Karla',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s;width:100%;box-shadow:0 3px 12px rgba(184,134,11,.25)}
@@ -264,9 +262,8 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
   <div class="topbar">
     <div class="tb-logo">JAMB</div>
     <div class="tb-right">
-      <div class="tb-player" onclick="doShowProfile()" style="cursor:pointer;user-select:none" title="Klikni za profil">👤 <b id="lobName"></b></div>
+      <div class="tb-player">👤 <b id="lobName"></b></div>
       <button class="ico-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
-      <button class="btn-sm" onclick="doLogout()" title="Odjava">Odjava</button>
     </div>
   </div>
   <div class="lobby-body">
@@ -426,7 +423,7 @@ const DOT_POS={1:[[23,23]],2:[[11,11],[35,35]],3:[[11,11],[23,23],[35,35]],4:[[1
 function dieSVG(n){return`<svg viewBox="0 0 46 46">${(DOT_POS[n]||[]).map(([cx,cy])=>`<circle class="die-dot" cx="${cx}" cy="${cy}" r="4.8"/>`).join('')}</svg>`;}
 
 // ── STATE ──────────────────────────────────────────────────────────
-let socket,myName='',myRoomId='',RS=null,myToken=null,myProfileToken=null;
+let socket,myName='',myRoomId='',RS=null;
 // visiblePlayers: set of player IDs whose scorecard is shown on desktop
 let visiblePlayers=new Set();
 
@@ -434,58 +431,10 @@ let visiblePlayers=new Set();
 function initApp(){
   if(typeof io==='undefined')return setTimeout(initApp,50);
   socket=io({transports:['websocket','polling']});
-  socket.on('connect',()=>{
-    console.log('✅',socket.id);
-    const saved=localStorage.getItem('jambSession');
-    if(saved){
-      try{
-        const s=JSON.parse(saved);
-        // Prvo pokušaj s profileToken (traje i nakon restarta servera)
-        if(s.profileToken){ socket.emit('resumeWithProfileToken',s.profileToken); return; }
-        if(s.token){ socket.emit('resumeSession',s.token); return; }
-      } catch(e){ localStorage.removeItem('jambSession'); }
-    }
-  });
+  socket.on('connect',()=>console.log('✅',socket.id));
   socket.on('connect_error',e=>{console.error(e);toast('Greška spajanja!','err');});
   document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-  
-  // Novi login
-  socket.on('nameSet',p=>{
-    myName=p.name; myToken=p.token; myProfileToken=p.profileToken||null;
-    localStorage.setItem('jambSession',JSON.stringify({token:p.token,profileToken:p.profileToken||null,name:p.name}));
-    document.getElementById('lobName').textContent=p.name;
-    show('lobbyScreen');socket.emit('getRooms');
-  });
-
-  // Obnova sesije
-  socket.on('sessionResumed',(p)=>{
-    myName=p.name; myToken=p.token; myProfileToken=p.profileToken||null;
-    localStorage.setItem('jambSession',JSON.stringify({token:p.token,profileToken:p.profileToken||null,name:p.name}));
-    document.getElementById('lobName').textContent=p.name;
-    if(p.room){
-      RS=p.room; myRoomId=p.room.id;
-      if(p.room.state==='playing'){renderGame(p.room);show('gameScreen');}
-      else if(p.room.state==='lobby'){renderWait(p.room);show('roomScreen');}
-      else if(p.room.state==='finished'){renderGameOver(p.room);show('gameOverScreen');}
-      else{show('lobbyScreen');}
-    } else {
-      show('lobbyScreen');
-    }
-    socket.emit('getRooms');
-    toast('👋 Dobrodošao natrag, '+p.name+'!','ok');
-  });
-
-  // Sesija istekla (1h neaktivnosti)
-  socket.on('sessionExpired',()=>{
-    localStorage.removeItem('jambSession');
-    myToken=null; myProfileToken=null; myName=''; myRoomId=''; RS=null;
-    show('loginScreen');
-    toast('Sesija je istekla — prijavi se ponovo','info');
-  });
-
-  socket.on('profileData',(data)=>{
-    renderProfileModal(data);
-  });
+  socket.on('nameSet',p=>{myName=p.name;document.getElementById('lobName').textContent=p.name;show('lobbyScreen');socket.emit('getRooms');});
   socket.on('roomList',renderRoomList);
   socket.on('roomJoined',room=>{myRoomId=room.id;RS=room;renderWait(room);show('roomScreen');});
   socket.on('roomUpdate',room=>{RS=room;if(room.state==='lobby')renderWait(room);else renderGame(room);});
@@ -510,12 +459,11 @@ function initApp(){
 
 // ── ACTIONS ────────────────────────────────────────────────────────
 function doLogin(){const n=document.getElementById('nameInput').value.trim();if(!n)return toast('Upiši ime!','err');socket.emit('setName',n);}
-function doLogout(){localStorage.removeItem('jambSession');myToken=null;myName='';if(myRoomId){socket.emit('leaveRoom',myRoomId);myRoomId='';}show('loginScreen');toast('Odjavljeni ste','info');}
 function doCreateRoom(){const name=document.getElementById('newRoomName').value.trim();const max=parseInt(document.getElementById('maxPlayers').value);socket.emit('createRoom',{roomName:name,maxPlayers:max});}
 function doJoinRoom(id){socket.emit('joinRoom',id);}
 function doStartGame(){socket.emit('startGame',myRoomId);}
-function doLeaveRoom(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');if(myToken)socket.emit('ping',myToken);}
-function doRoll(){if(myToken)socket.emit('ping',myToken);
+function doLeaveRoom(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');}
+function doRoll(){
   if(!RS||!myTurn(RS)||RS.rollsLeft<=0)return;
   document.querySelectorAll('.die:not(.held)').forEach(d=>{d.classList.add('rolling');setTimeout(()=>d.classList.remove('rolling'),280);});
   socket.emit('rollDice',myRoomId);
@@ -523,9 +471,8 @@ function doRoll(){if(myToken)socket.emit('ping',myToken);
 function doToggleHold(i){if(!RS||!myTurn(RS)||!RS.hasRolled||RS.rollsLeft<=0)return;socket.emit('toggleHold',{roomId:myRoomId,index:i});}
 function doAnnounce(rowId){if(!RS||!myTurn(RS))return;if(RS.hasRolled)return toast('Najava mora biti PRIJE bacanja!','err');socket.emit('announce',{roomId:myRoomId,rowId});}
 function doScore(col,row){if(!RS||!myTurn(RS))return;if(!RS.hasRolled)return toast('Prvo baci kockice!','err');socket.emit('scoreCategory',{roomId:myRoomId,col,row});}
-function doToggleActiveDie(i){if(!RS||!myTurn(RS)||!RS.hasRolled)return;socket.emit('toggleActiveDie',{roomId:myRoomId,index:i});}
 function doSendChat(){const el=document.getElementById('chatIn');const t=el.value.trim();if(!t)return;socket.emit('chatMessage',{roomId:myRoomId,text:t});el.value='';}
-function goLobby(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');if(myToken)socket.emit('ping',myToken);}
+function goLobby(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');}
 
 function togglePlayerView(pid){
   if(visiblePlayers.has(pid)&&visiblePlayers.size>1){visiblePlayers.delete(pid);}
@@ -577,24 +524,12 @@ function renderGame(room){
   if(ann){kb.classList.add('on');document.getElementById('kontraRowTxt').textContent=RL[ann.rowId]||ann.rowId;document.getElementById('kontraByTxt').textContent=`(${ann.playerName})`;}
   else kb.classList.remove('on');
 
-  // Dice (6 dice — during rolling: click=hold; after rolling: click=toggle active/inactive)
-  const actDice=room.activeDice||[true,true,true,true,true,true];
-  const scoringPhase=me&&room.hasRolled&&room.rollsLeft===0;
+  // Dice
   document.getElementById('diceRow').innerHTML=room.dice.map((v,i)=>{
     const held=room.heldDice[i];
-    const active=actDice[i];
     const dim=!me;
-    // During rolling: click = hold/unhold
-    // After last roll: click = toggle active (for scoring)
     const canHold=me&&room.hasRolled&&room.rollsLeft>0;
-    const canToggle=scoringPhase;
-    let lbl='';
-    if(canHold&&held) lbl='<div class="hold-lbl">DRŽI</div>';
-    else if(scoringPhase&&!active) lbl='<div class="hold-lbl" style="color:var(--muted)">neaktivna</div>';
-    else if(scoringPhase&&active) lbl='<div class="hold-lbl" style="color:var(--green2)">✓ koristi</div>';
-    const dieClass=`die ${canHold&&held?'held':''} ${scoringPhase&&!active?'die-inactive':''} ${dim?'die-dim':''}`;
-    const clickFn=canHold?`doToggleHold(${i})`:canToggle?`doToggleActiveDie(${i})`:'';
-    return`<div class="die-wrap"><div class="${dieClass}" onclick="${clickFn}" style="${canHold||canToggle?'cursor:pointer':''}">${dieSVG(v)}${scoringPhase&&!active?'<div class="die-inactive-x">✕</div>':''}</div>${lbl}</div>`;
+    return`<div class="die-wrap"><div class="die ${held?'held':''} ${dim?'die-dim':''}" onclick="${canHold?`doToggleHold(${i})`:''}">${dieSVG(v)}</div>${held?'<div class="hold-lbl">DRŽI</div>':''}</div>`;
   }).join('');
 
   // Roll btn
@@ -611,7 +546,7 @@ function renderGame(room){
   if(!me)hint=`Čekanje na ${cur?.name??''}…`;
   else if(mustKontraMe && !kontraAlreadyDone)hint=`⚡ Moraš upisati KONTRU: ${RL[room.activeAnnouncement.rowId]}`;
   else if(!room.hasRolled){if(room.announcement)hint=`📢 Najavljen: ${RL[room.announcement.rowId]} — baci!`;else hint='Možeš najaviti polje (📢) ili odmah baci';}
-  else if(room.rollsLeft===0){const aCount=(room.activeDice||[true,true,true,true,true,true]).filter(Boolean).length;if(room.announcement)hint=`📢 Upiši najavu: ${RL[room.announcement.rowId]} (${aCount} kockica aktivno)`;else hint=`Odaberi kockice za upis (${aCount}/6 aktivno) · klikni polje za upisati`;}
+  else if(room.rollsLeft===0){if(room.announcement)hint=`📢 Upiši najavu: ${RL[room.announcement.rowId]}`;else hint='Odaberi polje za upis';}
   else hint='Klikni kockice da ih zadržiš, pa baci ponovo';
   document.getElementById('diceHint').textContent=hint;
 
@@ -742,9 +677,7 @@ function cellHTML(col,rid,sc,canPick,canAct,dice,ann,activeAnn,player,room){
     }
     // Post-roll: jedino najavljena ćelija je klikabilna
     if(canPick && ann && ann.rowId===rid){
-      const ad5=(room.activeDice||[true,true,true,true,true,true]);
-      const activeDiceArr5=dice.filter((_,i)=>ad5[i]);
-      const p=preview(rid,activeDiceArr5);
+      const p=preview(rid,dice);
       return`<td class="${p===0?'cz':'ca'}" onclick="doScore('naj','${rid}')" title="Upiši: ${p}">${p}</td>`;
     }
     return`<td class="cn-lock">—</td>`;
@@ -758,9 +691,7 @@ function cellHTML(col,rid,sc,canPick,canAct,dice,ann,activeAnn,player,room){
     if(activeAnn.playerId===player.id) return`<td class="ck-lock" title="Vlastita najava">✗</td>`;
     // Moj red + bacano = mogu upisati
     if(canPick){
-      const ad5k=(room.activeDice||[true,true,true,true,true,true]);
-      const activeDiceArrK=dice.filter((_,i)=>ad5k[i]);
-      const p=preview(rid,activeDiceArrK);
+      const p=preview(rid,dice);
       return`<td class="${p===0?'cz':'ck-req'}" onclick="doScore('kon','${rid}')" title="Kontra: ${p}">${p}</td>`;
     }
     // Nije moj red, ali kontra čeka
@@ -777,10 +708,7 @@ function cellHTML(col,rid,sc,canPick,canAct,dice,ann,activeAnn,player,room){
   if(!canPick) return`<td class="ce">·</td>`;
   const ok=canScore(col,rid,sc);
   if(!ok) return`<td class="cl" title="Redoslijed">🔒</td>`;
-  // Need 5 active dice (one excluded)
-  const actMask=(room.activeDice||[true,true,true,true,true,true]);
-  const activeDice5=dice.filter((_,i)=>actMask[i]);
-  const p=preview(rid,activeDice5);
+  const p=preview(rid,dice);
   return`<td class="${p===0?'cz':'ca'}" onclick="doScore('${col}','${rid}')">${p}</td>`;
 }
 
@@ -803,17 +731,5 @@ function renderGameOver(room){
 // Resize handler to re-render on breakpoint change
 window.addEventListener('resize',()=>{if(RS&&RS.state==='playing')renderGame(RS);});
 </script>
-
-<!-- Profile Modal -->
-<div id="profileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center;">
-  <div style="background:var(--s1);border:1.5px solid var(--border);border-radius:16px;padding:32px;min-width:320px;max-width:420px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.5)">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <h2 style="margin:0;font-size:18px;color:var(--gold)">👤 <span id="profName"></span></h2>
-      <button onclick="closeProfileModal()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">✕</button>
-    </div>
-    <div id="profStats" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
-    <p id="profSince" style="margin:16px 0 0;font-size:12px;color:var(--muted);text-align:center"></p>
-  </div>
-</div>
 </body>
 </html>

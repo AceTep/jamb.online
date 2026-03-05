@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -19,7 +20,7 @@ function getNextRequired(col, scorecard) {
 }
 function canScore(col, rowId, scorecard) {
   if (scorecard[col][rowId] !== undefined) return false;
-  const next = getNextRequired(col, scorecard);
+  const next = getNextRequired(col, rowId);
   return next === null || next === rowId;
 }
 function scoreDice(rowId, dice) {
@@ -55,14 +56,15 @@ function isGameOver(scorecard) { return COLS.every(col => isColComplete(scorecar
 function newScorecard() { const sc={}; COLS.forEach(c=>{sc[c]={};}); return sc; }
 function rollN(n) { return Array.from({length:n},()=>Math.floor(Math.random()*6)+1); }
 function newTurnState() {
-  return { dice:[1,1,1,1,1], heldDice:[false,false,false,false,false], rollsLeft:3, hasRolled:false, announcement:null };
+  return { dice:[1,1,1,1,1,1], heldDice:[false,false,false,false,false,false], activeDice:[true,true,true,true,true,true], rollsLeft:3, hasRolled:false, announcement:null };
 }
-function newPlayer(id, name) {
-  return { id, name, scorecard:newScorecard(), colTotals:{g:0,d:0,sl:0,naj:0,kon:0}, grandTotal:0 };
+function newPlayer(id, name, token) {
+  return { id, name, token: token||null, scorecard:newScorecard(), colTotals:{g:0,d:0,sl:0,naj:0,kon:0}, grandTotal:0 };
 }
 function createRoom(id, name, hostId, hostName, maxPlayers) {
-  return { id, name, host:hostId, maxPlayers:maxPlayers||4,
-    players:[newPlayer(hostId,hostName)], state:'lobby',
+  const hostToken = Object.values(players).find(p=>p.id===hostId)?.token||null;
+  return { id, name, host:hostId, hostToken, maxPlayers:maxPlayers||4,
+    players:[newPlayer(hostId,hostName,hostToken)], state:'lobby',
     currentPlayerIndex:0, round:1, ...newTurnState(),
     activeAnnouncement:null, chat:[] };
 }
@@ -72,9 +74,77 @@ function advanceTurn(room) {
   const prevAnn = room.activeAnnouncement;
   Object.assign(room, newTurnState());
   room.activeAnnouncement = prevAnn;
+  room.activeDice = [true,true,true,true,true,true];
 }
 
+// ── PERSISTENT PLAYER PROFILES (JSON na disku) ───────────────────────
+const DATA_DIR = path.join(__dirname, 'data');
+const PROFILES_FILE = path.join(DATA_DIR, 'players.json');
+
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+if (!fs.existsSync(PROFILES_FILE)) fs.writeFileSync(PROFILES_FILE, '{}');
+
+let profileDB = {};
+try { profileDB = JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8')); } catch(e) { profileDB = {}; }
+
+function saveProfiles() {
+  try { fs.writeFileSync(PROFILES_FILE, JSON.stringify(profileDB, null, 2)); } catch(e) { console.error('Greška pri snimanju profila:', e); }
+}
+
+// Dohvati ili kreiraj profil po imenu (case-insensitive)
+function getOrCreateProfile(name) {
+  const key = name.toLowerCase();
+  if (!profileDB[key]) {
+    profileDB[key] = {
+      name,                  // originalni casing
+      token: genToken(),     // trajni token (ne mijenja se)
+      createdAt: Date.now(),
+      stats: { wins: 0, losses: 0, gamesPlayed: 0, totalScore: 0, totalJambs: 0, bestScore: 0 }
+    };
+    saveProfiles();
+  }
+  return profileDB[key];
+}
+
+function updateProfileStats(name, { won, score, jambs }) {
+  const key = name.toLowerCase();
+  const p = profileDB[key];
+  if (!p) return;
+  p.stats.gamesPlayed++;
+  if (won) p.stats.wins++; else p.stats.losses++;
+  p.stats.totalScore += score || 0;
+  p.stats.totalJambs += jambs || 0;
+  if ((score || 0) > p.stats.bestScore) p.stats.bestScore = score;
+  saveProfiles();
+}
+
+// ── SESSION STORE (u memoriji, traje dok server radi) ─────────────────
+const SESSION_TTL = 60 * 60 * 1000; // 1h neaktivnosti
+const sessions = new Map(); // sessionToken → { name, profileToken, lastSeen, socketId }
+
+function genToken() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+function touchSession(token) {
+  const s = sessions.get(token);
+  if (s) s.lastSeen = Date.now();
+}
+function pruneOldSessions() {
+  const now = Date.now();
+  for (const [token, s] of sessions) {
+    if (now - s.lastSeen > SESSION_TTL) {
+      if (s.socketId) {
+        const sock = io.sockets.sockets.get(s.socketId);
+        if (sock) sock.emit('sessionExpired');
+      }
+      sessions.delete(token);
+    }
+  }
+}
+setInterval(pruneOldSessions, 5 * 60 * 1000);
+
 const rooms = {}, players = {};
+
 function getRoomList() {
   return Object.values(rooms).map(r=>({id:r.id,name:r.name,players:r.players.length,maxPlayers:r.maxPlayers,state:r.state,playerNames:r.players.map(p=>p.name)}));
 }
@@ -92,28 +162,95 @@ function handleLeave(socket, rid) {
 }
 
 io.on('connection',(socket)=>{
+
+  // ── LOGIN: dohvati ili kreiraj profil po imenu ─────────────────────
   socket.on('setName',(name)=>{
-    players[socket.id]={id:socket.id,name:name.trim().slice(0,20)};
-    socket.emit('nameSet',players[socket.id]);
-    socket.emit('roomList',getRoomList());
+    const trimmed = name.trim().slice(0,20);
+    if (!trimmed) return;
+
+    const profile = getOrCreateProfile(trimmed);
+    // Generiraj novi session token za ovu sesiju
+    const sessionToken = genToken();
+    sessions.set(sessionToken, { name: profile.name, profileToken: profile.token, lastSeen: Date.now(), socketId: socket.id });
+    players[socket.id] = { id: socket.id, name: profile.name, token: sessionToken, profileToken: profile.token };
+
+    socket.emit('nameSet', { name: profile.name, token: sessionToken, profileToken: profile.token });
+    socket.emit('roomList', getRoomList());
   });
+
+  // ── OBNOVA SESIJE s tokenom iz localStorage ────────────────────────
+  socket.on('resumeSession',(sessionToken)=>{
+    const s = sessions.get(sessionToken);
+    if (!s || Date.now() - s.lastSeen > SESSION_TTL) {
+      sessions.delete(sessionToken);
+      // Pokušaj s profileToken iz localStorage (trajno pamćenje)
+      return socket.emit('sessionExpired');
+    }
+    s.socketId = socket.id;
+    s.lastSeen = Date.now();
+    players[socket.id] = { id: socket.id, name: s.name, token: sessionToken, profileToken: s.profileToken };
+
+    let rejoinedRoom = null;
+    for (const room of Object.values(rooms)) {
+      const p = room.players.find(p => p.token === sessionToken);
+      if (p) {
+        p.id = socket.id;
+        socket.join(room.id);
+        rejoinedRoom = room;
+        if (room.hostToken === sessionToken) room.host = socket.id;
+        break;
+      }
+    }
+
+    socket.emit('sessionResumed', { name: s.name, token: sessionToken, profileToken: s.profileToken, room: rejoinedRoom });
+    if (rejoinedRoom) io.to(rejoinedRoom.id).emit('roomUpdate', rejoinedRoom);
+    socket.emit('roomList', getRoomList());
+  });
+
+  // ── OBNOVA S PROFILE TOKEN (trajni — preživljava restart servera) ──
+  socket.on('resumeWithProfileToken',(profileToken)=>{
+    // Pronađi profil po token-u
+    const profile = Object.values(profileDB).find(p => p.token === profileToken);
+    if (!profile) return socket.emit('sessionExpired');
+
+    const sessionToken = genToken();
+    sessions.set(sessionToken, { name: profile.name, profileToken, lastSeen: Date.now(), socketId: socket.id });
+    players[socket.id] = { id: socket.id, name: profile.name, token: sessionToken, profileToken };
+
+    socket.emit('sessionResumed', { name: profile.name, token: sessionToken, profileToken: profileToken, room: null });
+    socket.emit('roomList', getRoomList());
+  });
+
+  // ── DOHVAT STATISTIKE ─────────────────────────────────────────────
+  socket.on('getProfile', () => {
+    const p = players[socket.id];
+    if (!p) return;
+    const profile = profileDB[p.name.toLowerCase()];
+    if (!profile) return;
+    socket.emit('profileData', { name: profile.name, stats: profile.stats, createdAt: profile.createdAt });
+  });
+
+  socket.on('ping', (token) => { if(token) touchSession(token); });
   socket.on('getRooms',()=>socket.emit('roomList',getRoomList()));
+
   socket.on('createRoom',({roomName,maxPlayers})=>{
     const p=players[socket.id]; if(!p) return;
     const rid=Math.random().toString(36).slice(2,8).toUpperCase();
     rooms[rid]=createRoom(rid,roomName||`${p.name}'s soba`,socket.id,p.name,maxPlayers||4);
     socket.join(rid); socket.emit('roomJoined',rooms[rid]); io.emit('roomList',getRoomList());
   });
+
   socket.on('joinRoom',(rid)=>{
     const p=players[socket.id],room=rooms[rid];
     if(!p||!room) return socket.emit('error','Soba nije pronađena!');
     if(room.state!=='lobby') return socket.emit('error','Igra je već u tijeku!');
     if(room.players.length>=room.maxPlayers) return socket.emit('error','Soba je puna!');
     if(room.players.find(x=>x.id===socket.id)){socket.join(rid);return socket.emit('roomJoined',room);}
-    room.players.push(newPlayer(socket.id,p.name));
+    room.players.push(newPlayer(socket.id,p.name,p.token));
     socket.join(rid); socket.emit('roomJoined',room);
     io.to(rid).emit('roomUpdate',room); io.emit('roomList',getRoomList());
   });
+
   socket.on('startGame',(rid)=>{
     const room=rooms[rid]; if(!room||room.host!==socket.id) return;
     room.state='playing'; room.currentPlayerIndex=0; room.round=1;
@@ -121,7 +258,6 @@ io.on('connection',(socket)=>{
     io.to(rid).emit('gameStarted',room); io.emit('roomList',getRoomList());
   });
 
-  // Najava: odabir PRIJE prvog bacanja
   socket.on('announce',({roomId,rowId})=>{
     const room=rooms[roomId]; if(!room||room.state!=='playing') return;
     const cur=room.players[room.currentPlayerIndex];
@@ -133,13 +269,14 @@ io.on('connection',(socket)=>{
   });
 
   socket.on('rollDice',(rid)=>{
+    if(players[socket.id]?.token) touchSession(players[socket.id].token);
     const room=rooms[rid]; if(!room||room.state!=='playing') return;
     const cur=room.players[room.currentPlayerIndex];
     if(cur.id!==socket.id||room.rollsLeft<=0) return;
     room.dice=room.dice.map((d,i)=>room.heldDice[i]?d:rollN(1)[0]);
     room.rollsLeft--;
     room.hasRolled=true;
-    if(room.rollsLeft===0) room.heldDice=[false,false,false,false,false];
+    if(room.rollsLeft===0) room.heldDice=[false,false,false,false,false,false];
     io.to(rid).emit('roomUpdate',room);
   });
 
@@ -151,53 +288,52 @@ io.on('connection',(socket)=>{
     io.to(roomId).emit('roomUpdate',room);
   });
 
+  socket.on('toggleActiveDie',({roomId,index})=>{
+    const room=rooms[roomId]; if(!room||room.state!=='playing') return;
+    if(room.players[room.currentPlayerIndex].id!==socket.id) return;
+    if(!room.hasRolled) return;
+    if(!room.activeDice) room.activeDice=[true,true,true,true,true,true];
+    room.activeDice[index] = !room.activeDice[index];
+    io.to(roomId).emit('roomUpdate',room);
+  });
+
   socket.on('scoreCategory',({roomId,col,row})=>{
     const room=rooms[roomId]; if(!room||room.state!=='playing') return;
     const cur=room.players[room.currentPlayerIndex];
     if(cur.id!==socket.id) return socket.emit('error','Nije tvoj red!');
     if(!room.hasRolled) return socket.emit('error','Prvo baci kockice!');
 
-    // ── Provjera: je li igrač obavezan upisati kontru ovaj potez?
     const mustKontra = room.activeAnnouncement && room.activeAnnouncement.playerId !== socket.id
                        && cur.scorecard['kon'][room.activeAnnouncement.rowId] === undefined;
-
-    // ── Provjera: je li igrač najavil/a i mora upisati u najava stupac?
     const mustNajava = !!room.announcement;
 
-    // ── Ako moram upisati kontru, ne mogu nigdje drugdje
     if(mustKontra){
       if(col !== 'kon') return socket.emit('error','Kontra je aktivna — moraš upisati u ⚡ Kontra stupac!');
       if(row !== room.activeAnnouncement.rowId) return socket.emit('error',`Moraš upisati kontra za: ${room.activeAnnouncement.rowId}!`);
     }
-
-    // ── Ako sam najavil/a, moram upisati samo u naj stupac
     if(mustNajava){
       if(col !== 'naj') return socket.emit('error','Najavil/a si polje — moraš upisati u 📢 Najava stupac!');
       if(row !== room.announcement.rowId) return socket.emit('error','Možeš upisati samo najavljeno polje!');
     }
-
-    // ── Najava stupac: mora biti aktivna najava
     if(col==='naj' && !room.announcement) return socket.emit('error','Nisi najavil/a polje!');
     if(col==='naj' && row !== room.announcement.rowId) return socket.emit('error','Možeš upisati samo najavljeno polje!');
-
-    // ── Kontra stupac: mora biti aktivan activeAnnouncement, ne može vlastiti
     if(col==='kon'){
       if(!room.activeAnnouncement) return socket.emit('error','Nema aktivne najave za kontru!');
       if(room.activeAnnouncement.rowId !== row) return socket.emit('error','Možeš upisati samo kontra polje!');
       if(room.activeAnnouncement.playerId === socket.id) return socket.emit('error','Ne možeš kontirati vlastitu najavu!');
     }
-
     if(!canScore(col,row,cur.scorecard)) return socket.emit('error','Ne možeš upisati tu!');
 
-    cur.scorecard[col][row] = scoreDice(row, room.dice);
+    if(!room.activeDice) room.activeDice=[true,true,true,true,true,true];
+    const activeDice = room.dice.filter((_,i) => room.activeDice[i]);
+    if(activeDice.length === 0) return socket.emit('error','Moraš odabrati barem jednu kockicu!');
+    cur.scorecard[col][row] = scoreDice(row, activeDice);
     updateTotals(cur);
 
-    // Najava upisana → postaje activeAnnouncement za kontru
     if(col==='naj'){
       room.activeAnnouncement = { ...room.announcement };
       room.announcement = null;
     }
-    // Kontra upisana → provjeri jesu li svi upisali
     if(col==='kon'){
       const aid = room.activeAnnouncement.playerId;
       const rid2 = room.activeAnnouncement.rowId;
@@ -206,7 +342,18 @@ io.on('connection',(socket)=>{
     }
 
     if(room.players.every(p=>isGameOver(p.scorecard))){
-      room.state='finished'; io.to(roomId).emit('gameOver',room); io.emit('roomList',getRoomList()); return;
+      room.state='finished';
+      // ── Spremi statistiku u profile ──────────────────────────────
+      const maxScore = Math.max(...room.players.map(p=>p.grandTotal));
+      room.players.forEach(rp => {
+        const jambs = Object.values(rp.scorecard).reduce((sum, col) => sum + (col['jamb'] > 0 ? 1 : 0), 0);
+        updateProfileStats(rp.name, {
+          won: rp.grandTotal === maxScore,
+          score: rp.grandTotal,
+          jambs
+        });
+      });
+      io.to(roomId).emit('gameOver',room); io.emit('roomList',getRoomList()); return;
     }
     advanceTurn(room);
     io.to(roomId).emit('roomUpdate',room);
@@ -218,9 +365,25 @@ io.on('connection',(socket)=>{
     room.chat.push(msg); if(room.chat.length>80) room.chat.shift();
     io.to(roomId).emit('chatMessage',msg);
   });
+
   socket.on('leaveRoom',(rid)=>handleLeave(socket,rid));
+
   socket.on('disconnect',()=>{
-    Object.keys(rooms).forEach(rid=>{if(rooms[rid]?.players.find(p=>p.id===socket.id))handleLeave(socket,rid);});
+    const p = players[socket.id];
+    const token = p?.token;
+    const hasSession = token && sessions.has(token);
+    if (!hasSession) {
+      Object.keys(rooms).forEach(rid=>{if(rooms[rid]?.players.find(rp=>rp.id===socket.id))handleLeave(socket,rid);});
+    } else {
+      delete players[socket.id];
+      for (const room of Object.values(rooms)) {
+        if (room.players.find(rp => rp.id === socket.id)) {
+          io.to(room.id).emit('playerOffline', { socketId: socket.id, name: p.name });
+          break;
+        }
+      }
+      return;
+    }
     delete players[socket.id];
   });
 });
