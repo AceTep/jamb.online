@@ -201,10 +201,25 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 .die:hover:not(.die-dim){transform:scale(1.08);border-color:var(--gold)}
 .die.held{background:var(--die-held-bg);border-color:var(--die-held-bdr);box-shadow:0 0 0 2px rgba(184,134,11,.2),0 3px 10px var(--sh)}
 .die.die-dim{opacity:.4;cursor:default;pointer-events:none}
-.die.rolling{animation:droll .28s ease}
+.die.rolling{animation:droll .55s cubic-bezier(.36,.07,.19,.97);transform-origin:center;pointer-events:none}
+.die.rolling svg{animation:droll-face .55s ease}
 .die.die-inactive{opacity:.38;border-color:var(--muted);background:var(--s2);position:relative}
 .die-inactive-x{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:22px;color:var(--muted);pointer-events:none;font-weight:900;opacity:.7}
-@keyframes droll{0%{transform:rotate(0)scale(1)}30%{transform:rotate(-13deg)scale(1.1)}70%{transform:rotate(11deg)scale(1.1)}100%{transform:rotate(0)scale(1)}}
+@keyframes droll{
+  0%  {transform:rotate(0deg) scale(1) translateY(0)}
+  15% {transform:rotate(-22deg) scale(1.18) translateY(-8px)}
+  35% {transform:rotate(16deg) scale(1.14) translateY(-5px)}
+  55% {transform:rotate(-12deg) scale(1.1) translateY(-7px)}
+  75% {transform:rotate(7deg) scale(1.04) translateY(-2px)}
+  90% {transform:rotate(-2deg) scale(1.01)}
+  100%{transform:rotate(0deg) scale(1) translateY(0)}
+}
+@keyframes droll-face{
+  0%,100%{opacity:1}
+  25%{opacity:.15}
+  50%{opacity:.4}
+  75%{opacity:.15}
+}
 .hold-lbl{margin:10px;position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:7px;color:var(--gold);letter-spacing:1px;white-space:nowrap}
 .die svg{width:40px;height:40px}
 .die-dot{fill:var(--die-dot)}
@@ -215,6 +230,29 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 .dice-hint{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-align:center;line-height:1.6}
 .ann-box{width:100%;background:rgba(122,58,154,.08);border:1.5px solid rgba(122,58,154,.25);border-radius:9px;padding:10px 12px;display:none}
 .ann-box.on{display:block}
+/* Emoji reakcije */
+.react-bar{display:flex;justify-content:center;gap:6px;padding:8px 4px 2px;border-top:1px solid var(--faint);margin-top:4px;flex-wrap:wrap}
+.react-btn{background:none;border:1.5px solid var(--border);border-radius:20px;padding:4px 8px;font-size:18px;cursor:pointer;transition:transform .15s,border-color .15s;line-height:1}
+.react-btn:hover{transform:scale(1.25);border-color:var(--gold)}
+.react-btn:active{transform:scale(.95)}
+.yahtzee-btn{font-family:'Bebas Neue',cursive;letter-spacing:2px;font-size:13px;padding:4px 12px;background:var(--gold);border-color:var(--gold);color:#111;font-weight:700;width:20%}
+.yahtzee-btn:hover{transform:scale(1.03)!important;background:var(--gold2);border-color:var(--gold2)}
+#reactOverlay{position:fixed;inset:0;pointer-events:none;z-index:500;overflow:hidden}
+.react-float{position:absolute;font-size:32px;animation:react-fly 2.2s ease-out forwards;pointer-events:none;user-select:none}
+@keyframes react-fly{
+  0%  {transform:translateY(0) scale(0.5) rotate(-10deg);opacity:1}
+  20% {transform:translateY(-60px) scale(1.2) rotate(5deg);opacity:1}
+  60% {transform:translateY(-180px) scale(1) rotate(-3deg);opacity:.9}
+  100%{transform:translateY(-320px) scale(0.7) rotate(8deg);opacity:0}
+}
+@keyframes yahtzee-pop{
+  0%  {transform:translate(-50%,-50%) scale(0);opacity:0}
+  15% {transform:translate(-50%,-50%) scale(1.3);opacity:1}
+  30% {transform:translate(-50%,-50%) scale(0.95);opacity:1}
+  40% {transform:translate(-50%,-50%) scale(1.05);opacity:1}
+  70% {transform:translate(-50%,-50%) scale(1);opacity:1}
+  100%{transform:translate(-50%,-50%) scale(1.1);opacity:0}
+}
 .ann-lbl{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--purple2);margin-bottom:5px}
 .ann-val{color:var(--purple2);font-weight:700;font-size:13px}
 .ann-sub{color:var(--muted);font-size:10px;margin-top:2px}
@@ -450,6 +488,15 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
         <div class="ann-val" id="annVal">—</div>
         <div class="ann-sub">Automatski se upisuje</div>
       </div>
+      <div class="react-bar" id="reactBar">
+        <button class="react-btn" onclick="doReact('👏')" title="Pljesak">👏</button>
+        <button class="react-btn" onclick="doReact('😱')" title="Šok">😱</button>
+        <button class="react-btn" onclick="doReact('🎲')" title="Kockice">🎲</button>
+        <button class="react-btn" onclick="doReact('😂')" title="Smijeh">😂</button>
+        <button class="react-btn" onclick="doReact('🔥')" title="Vatra">🔥</button>
+        <button class="react-btn" onclick="doReact('😤')" title="Bijes">😤</button>
+        <button class="react-btn yahtzee-btn" onclick="doYahtzee()" title="YAHTZEE!">🎲 YAHTZEE!</button>
+      </div>
     </div>
     <!-- Sidebar -->
     <div class="g-sidebar">
@@ -599,7 +646,7 @@ function grandTotal(sc){return COLS.reduce((a,c)=>a+colTotal(sc[c]),0);}
 // ── UTILS ──────────────────────────────────────────────────────────
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function toast(msg,type=''){const el=document.getElementById('toast');document.getElementById('toast-msg').textContent=msg;el.className='toast show '+type;clearTimeout(el._t);el._t=setTimeout(()=>dismissToast(),4000);}
+function toast(msg,type='',dur=4000){const el=document.getElementById('toast');document.getElementById('toast-msg').textContent=msg;el.className='toast show '+type;clearTimeout(el._t);el._t=setTimeout(()=>dismissToast(),dur);}
 function dismissToast(){const el=document.getElementById('toast');clearTimeout(el._t);el.className='toast';}
 function showHelp(){document.getElementById('helpModal').style.display='flex';}
 function showHint(){const b=document.getElementById('infoBar');b.classList.add('on');clearTimeout(b._t);b._t=setTimeout(()=>b.classList.remove('on'),6000);}
@@ -671,7 +718,7 @@ function initApp(){
   });
   socket.on('roomList',renderRoomList);
   socket.on('roomJoined',room=>{myRoomId=room.id;RS=room;renderWait(room);show('roomScreen');});
-  socket.on('roomUpdate',room=>{RS=room;if(room.state==='lobby')renderWait(room);else renderGame(room);});
+  socket.on('roomUpdate',room=>{RS=room;if(room.state==='lobby')renderWait(room);else{if(_rolling)renderGameExceptDice(room);else renderGame(room);}});
   socket.on('gameStarted',room=>{myRoomId=room.id;RS=room;renderGame(room);show('gameScreen');mobInit();
     if(!localStorage.getItem('jambHintSeen')){
       localStorage.setItem('jambHintSeen','1');
@@ -679,6 +726,7 @@ function initApp(){
     }
   });
   socket.on('gameOver',room=>{RS=room;renderGameOver(room);show('gameOverScreen');});
+
   socket.on('autoScored',({col,rowId,score,playerName})=>{
     toast(`✅ Auto-upis: ${RL[rowId]} → ${score} (${playerName})`,'ok');
     // flash the cell
@@ -692,6 +740,10 @@ function initApp(){
     const d=document.createElement('div');d.className='cmsg'+(msg.name?'':' sys');
     d.innerHTML=msg.name?`<span class="cn">${esc(msg.name)}</span><span class="ct">${esc(msg.text)}</span>`:`<span class="ct">${esc(msg.text)}</span>`;
     el.appendChild(d);el.scrollTop=el.scrollHeight;
+  });
+  socket.on('reaction',({emoji,name})=>{
+    if(emoji==='YAHTZEE') showYahtzee(name);
+    else showReaction(emoji,name);
   });
   socket.on('error',msg=>toast(msg,'err'));
   socket.on('roomClosed',({reason})=>{myRoomId='';RS=null;show('lobbyScreen');socket.emit('getRooms');toast(reason,'err');});
@@ -730,9 +782,18 @@ function doJoinByCode(){const code=document.getElementById('joinCodeInput').valu
 function doStartGame(){socket.emit('startGame',myRoomId);}
 function copyRoomCode(){const code=document.getElementById('roomCode').textContent;navigator.clipboard.writeText(code).then(()=>{const h=document.getElementById('copyHint');h.style.opacity='1';clearTimeout(h._t);h._t=setTimeout(()=>h.style.opacity='0',2000);});}
 function doLeaveRoom(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');if(myToken)socket.emit('ping',myToken);}
+let _rolling=false;
 function doRoll(){if(myToken)socket.emit('ping',myToken);
   if(!RS||!myTurn(RS)||RS.rollsLeft<=0)return;
-  document.querySelectorAll('.die:not(.held)').forEach(d=>{d.classList.add('rolling');setTimeout(()=>d.classList.remove('rolling'),280);});
+  _rolling=true;
+  const ANIM=600;
+  document.querySelectorAll('.die:not(.held)').forEach((d,i)=>{
+    const delay=i*60;
+    d.style.animationDelay=delay+'ms';
+    d.classList.add('rolling');
+    setTimeout(()=>{d.classList.remove('rolling');d.style.animationDelay='';},ANIM+delay);
+  });
+  setTimeout(()=>{_rolling=false;if(RS)renderGame(RS);},ANIM+300);
   socket.emit('rollDice',myRoomId);
 }
 function doToggleHold(i){if(!RS||!myTurn(RS)||!RS.hasRolled||RS.rollsLeft<=0)return;socket.emit('toggleHold',{roomId:myRoomId,index:i});}
@@ -740,6 +801,59 @@ function doAnnounce(rowId){if(!RS||!myTurn(RS))return;if(RS.hasRolled)return toa
 function doScore(col,row){if(!RS||!myTurn(RS))return;if(!RS.hasRolled)return toast('Prvo baci kockice!','err');socket.emit('scoreCategory',{roomId:myRoomId,col,row});}
 function doToggleActiveDie(i){if(!RS||!myTurn(RS)||!RS.hasRolled)return;socket.emit('toggleActiveDie',{roomId:myRoomId,index:i});}
 function doSendChat(){const el=document.getElementById('chatIn');const t=el.value.trim();if(!t)return;socket.emit('chatMessage',{roomId:myRoomId,text:t});el.value='';}
+function doReact(emoji){if(!myRoomId)return;socket.emit('reaction',{roomId:myRoomId,emoji});}
+function doYahtzee(){if(!myRoomId)return;socket.emit('reaction',{roomId:myRoomId,emoji:'YAHTZEE'});}
+function showReaction(emoji,name){
+  const overlay=document.getElementById('reactOverlay');
+  const count=3+Math.floor(Math.random()*3);
+  for(let i=0;i<count;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='react-float';
+      el.textContent=emoji;
+      const x=15+Math.random()*70;
+      el.style.left=x+'%';
+      el.style.bottom='80px';
+      el.style.animationDelay=(Math.random()*0.3)+'s';
+      el.style.fontSize=(28+Math.random()*16)+'px';
+      overlay.appendChild(el);
+      setTimeout(()=>el.remove(),2600);
+    },i*120);
+  }
+  toast(`${emoji} ${name}`,'info',1500);
+}
+function showYahtzee(name){
+  const overlay=document.getElementById('reactOverlay');
+  // Tekst "YAHTZEE!" u centru
+  const txt=document.createElement('div');
+  txt.textContent='YAHTZEE!';
+  Object.assign(txt.style,{
+    position:'absolute',left:'50%',top:'40%',
+    transform:'translate(-50%,-50%) scale(0)',
+    fontFamily:"'Bebas Neue',cursive",fontSize:'72px',
+    color:'var(--gold)',textShadow:'0 0 30px rgba(184,134,11,.8)',
+    letterSpacing:'6px',zIndex:'501',pointerEvents:'none',
+    animation:'yahtzee-pop 2.5s ease-out forwards'
+  });
+  overlay.appendChild(txt);
+  setTimeout(()=>txt.remove(),2600);
+  // Spam kockica sa svih strana
+  const dice=['🎲','🎲','🎲','🎲','🎲','🏆','🔥','✨'];
+  dice.forEach((d,i)=>{
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='react-float';
+      el.textContent=d;
+      el.style.left=(5+Math.random()*90)+'%';
+      el.style.bottom=(10+Math.random()*30)+'%';
+      el.style.fontSize=(24+Math.random()*24)+'px';
+      el.style.animationDuration=(1.8+Math.random()*0.8)+'s';
+      overlay.appendChild(el);
+      setTimeout(()=>el.remove(),2800);
+    },i*80);
+  });
+  toast(`🎲 YAHTZEE! — ${name}`,'ok',2500);
+}
 function goLobby(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');if(myToken)socket.emit('ping',myToken);}
 
 
@@ -770,6 +884,22 @@ function renderWait(room){
 }
 
 // ── RENDER GAME ────────────────────────────────────────────────────
+function renderGameExceptDice(room){
+  // Ažurira sve osim diceRow — koristi se dok traje animacija bacanja
+  const me=myTurn(room);
+  const cur=room.players[room.currentPlayerIndex];
+  document.getElementById('gRound').textContent=room.round;
+  document.getElementById('gCurPlayer').textContent=cur?.name??'?';
+  const done=3-room.rollsLeft;
+  document.getElementById('rdots').innerHTML=[0,1,2].map(i=>`<div class="rdot ${i<done?'on':''}"></div>`).join('');
+  document.getElementById('rdotTxt').textContent=`${room.rollsLeft}×`;
+  const rb=document.getElementById('rollBtn');
+  if(!me){rb.disabled=true;rb.textContent=`⏳ ${cur?.name??'...'}...`;}
+  else if(room.rollsLeft===0){rb.disabled=true;rb.textContent='✔ Upiši u tablicu';}
+  else{rb.disabled=false;rb.textContent=room.hasRolled?`🎲 Baci ponovo (${room.rollsLeft}×)`:'🎲 Baci kockice';}
+  renderScorecards(room);
+  renderPlayers(room);
+}
 function renderGame(room){
   const me=myTurn(room);
   if(me && !room.hasRolled) mobNotify('dice');
@@ -1139,5 +1269,6 @@ function mobNotify(tab){
     <p id="profSince" style="margin:16px 0 0;font-size:12px;color:var(--muted);text-align:center"></p>
   </div>
 </div>
+<div id="reactOverlay"></div>
 </body>
 </html>

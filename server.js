@@ -194,7 +194,7 @@ function pruneInactiveRooms() {
 setInterval(pruneInactiveRooms, 60 * 1000);
 
 const rooms = {}, players = {};
-const roomTimers = new Map(); // rid → setTimeout handle — NE sprema se na room objekt!
+const roomTimers = new Map();
 
 function getRoomList() {
   return Object.values(rooms).map(r=>({id:r.id,name:r.name,players:r.players.length,maxPlayers:r.maxPlayers,numDice:r.numDice||5,state:r.state,playerNames:r.players.map(p=>p.name)}));
@@ -468,6 +468,13 @@ io.on('connection',(socket)=>{
     const msg={name:p.name,text:text.slice(0,200),ts:Date.now()};
     room.chat.push(msg); if(room.chat.length>80) room.chat.shift();
     io.to(roomId).emit('chatMessage',msg);
+  });
+
+  socket.on('reaction',({roomId,emoji})=>{
+    const p=players[socket.id],room=rooms[roomId]; if(!p||!room) return;
+    const allowed=['👏','😱','🎲','😂','🔥','💀','🏆','😤','YAHTZEE'];
+    if(!allowed.includes(emoji)) return;
+    io.to(roomId).emit('reaction',{emoji,name:p.name});
   });
 
   socket.on('leaveRoom',(rid)=>handleLeave(socket,rid));
