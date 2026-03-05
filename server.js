@@ -278,8 +278,17 @@ io.on('connection',(socket)=>{
   socket.on('createRoom',({roomName,maxPlayers,numDice})=>{
     const p=players[socket.id]; if(!p) return;
     const rid=Math.random().toString(36).slice(2,8).toUpperCase();
-    rooms[rid]=createRoom(rid,roomName||`${p.name}'s soba`,socket.id,p.name,maxPlayers||4,numDice||5);
-    socket.join(rid); socket.emit('roomJoined',rooms[rid]); io.emit('roomList',getRoomList()); saveRooms();
+    const nd=numDice||5, max=maxPlayers||4;
+    rooms[rid]=createRoom(rid,roomName||`${p.name}'s soba`,socket.id,p.name,max,nd);
+    socket.join(rid);
+    // Solo soba — odmah startaj igru bez čekaonice
+    if(max===1){
+      rooms[rid].state='playing';
+      socket.emit('gameStarted',rooms[rid]);
+    } else {
+      socket.emit('roomJoined',rooms[rid]);
+    }
+    io.emit('roomList',getRoomList()); saveRooms();
   });
 
   socket.on('joinRoom',(rid)=>{

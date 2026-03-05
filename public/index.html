@@ -265,9 +265,8 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     <div class="tb-logo">JAMB</div>
     <div class="tb-right">
       <div class="tb-player" onclick="doShowProfile()" style="cursor:pointer;user-select:none" title="Klikni za profil">👤 <b id="lobName"></b></div>
-      <button class="btn-sm" onclick="doShowProfile()">📊 Profil</button>
       <button class="ico-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
-      <button class="btn-sm" onclick="doLogout()" title="Odjava">🚪</button>
+      <button class="btn-sm" onclick="doLogout()" title="Odjava">Odjava</button>
     </div>
   </div>
   <div class="lobby-body">
@@ -281,6 +280,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
       <input id="newRoomName" type="text" placeholder="Moja soba…" maxlength="30"></div>
       <div><label class="flbl">Maks. igrača</label>
       <select id="maxPlayers">
+        <option value="1">1 igrač (solo)</option>
         <option value="2">2 igrača</option><option value="3">3 igrača</option>
         <option value="4" selected>4 igrača</option>
       </select></div>
