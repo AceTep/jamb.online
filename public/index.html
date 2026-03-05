@@ -725,7 +725,7 @@ function initApp(){
       setTimeout(()=>showHelp(), 600);
     }
   });
-  socket.on('gameOver',room=>{RS=room;renderGameOver(room);show('gameOverScreen');});
+  socket.on('gameOver',room=>{RS=room;sndFanfara();renderGameOver(room);show('gameOverScreen');});
 
   socket.on('autoScored',({col,rowId,score,playerName})=>{
     toast(`✅ Auto-upis: ${RL[rowId]} → ${score} (${playerName})`,'ok');
@@ -736,14 +736,15 @@ function initApp(){
   });
   socket.on('chatMessage',msg=>{
     mobNotify('chat');
+    if(msg.name && msg.name !== myName) sndChat();
     const el=document.getElementById('chatMsgs');
     const d=document.createElement('div');d.className='cmsg'+(msg.name?'':' sys');
     d.innerHTML=msg.name?`<span class="cn">${esc(msg.name)}</span><span class="ct">${esc(msg.text)}</span>`:`<span class="ct">${esc(msg.text)}</span>`;
     el.appendChild(d);el.scrollTop=el.scrollHeight;
   });
   socket.on('reaction',({emoji,name})=>{
-    if(emoji==='YAHTZEE') showYahtzee(name);
-    else showReaction(emoji,name);
+    if(emoji==='YAHTZEE'){sndYahtzee();showYahtzee(name);}
+    else{sndReaction();showReaction(emoji,name);}
   });
   socket.on('error',msg=>toast(msg,'err'));
   socket.on('roomClosed',({reason})=>{myRoomId='';RS=null;show('lobbyScreen');socket.emit('getRooms');toast(reason,'err');});
@@ -782,9 +783,106 @@ function doJoinByCode(){const code=document.getElementById('joinCodeInput').valu
 function doStartGame(){socket.emit('startGame',myRoomId);}
 function copyRoomCode(){const code=document.getElementById('roomCode').textContent;navigator.clipboard.writeText(code).then(()=>{const h=document.getElementById('copyHint');h.style.opacity='1';clearTimeout(h._t);h._t=setTimeout(()=>h.style.opacity='0',2000);});}
 function doLeaveRoom(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');if(myToken)socket.emit('ping',myToken);}
+// ── ZVUK (Web Audio API) ─────────────────────────────────────────
+const _ac=()=>{if(!window._audioCtx){window._audioCtx=new(window.AudioContext||window.webkitAudioContext)();}return window._audioCtx;};
+
+function sndRoll(){
+  try{
+    const ac=_ac(); const t=ac.currentTime;
+    // 3-5 kratkih "clack" zvukova koji simuliraju kockice
+    const hits=3+Math.floor(Math.random()*3);
+    for(let i=0;i<hits;i++){
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.type='square';
+      o.frequency.setValueAtTime(180+Math.random()*120, t+i*0.07);
+      o.frequency.exponentialRampToValueAtTime(80+Math.random()*40, t+i*0.07+0.06);
+      g.gain.setValueAtTime(0.18, t+i*0.07);
+      g.gain.exponentialRampToValueAtTime(0.001, t+i*0.07+0.08);
+      o.start(t+i*0.07); o.stop(t+i*0.07+0.1);
+    }
+  }catch(e){}
+}
+
+function sndChat(){
+  try{
+    const ac=_ac(); const t=ac.currentTime;
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type='sine';
+    o.frequency.setValueAtTime(520, t);
+    o.frequency.setValueAtTime(780, t+0.08);
+    g.gain.setValueAtTime(0.12, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t+0.25);
+    o.start(t); o.stop(t+0.26);
+  }catch(e){}
+}
+
+function sndReaction(){
+  try{
+    const ac=_ac(); const t=ac.currentTime;
+    const freqs=[400,500,600,800];
+    freqs.forEach((f,i)=>{
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.type='sine';
+      o.frequency.setValueAtTime(f, t+i*0.06);
+      g.gain.setValueAtTime(0.1, t+i*0.06);
+      g.gain.exponentialRampToValueAtTime(0.001, t+i*0.06+0.15);
+      o.start(t+i*0.06); o.stop(t+i*0.06+0.16);
+    });
+  }catch(e){}
+}
+
+function sndYahtzee(){
+  try{
+    const ac=_ac(); const t=ac.currentTime;
+    // Uzlazna fanfara pa explodirajući akord
+    const melody=[261,329,392,523,659,784];
+    melody.forEach((f,i)=>{
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.type=i<4?'triangle':'sawtooth';
+      o.frequency.setValueAtTime(f, t+i*0.1);
+      g.gain.setValueAtTime(0.15, t+i*0.1);
+      g.gain.exponentialRampToValueAtTime(0.001, t+i*0.1+0.35);
+      o.start(t+i*0.1); o.stop(t+i*0.1+0.4);
+    });
+  }catch(e){}
+}
+
+function sndFanfara(){
+  try{
+    const ac=_ac(); const t=ac.currentTime;
+    // Pobjednička fanfara — C dur arpeggio pa završni akord
+    const notes=[261,329,392,523,659,523,784];
+    notes.forEach((f,i)=>{
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.type='triangle';
+      o.frequency.setValueAtTime(f, t+i*0.12);
+      g.gain.setValueAtTime(0.2, t+i*0.12);
+      g.gain.exponentialRampToValueAtTime(0.001, t+i*0.12+(i===notes.length-1?0.8:0.25));
+      o.start(t+i*0.12); o.stop(t+i*0.12+(i===notes.length-1?0.9:0.3));
+    });
+    // Završni akord
+    [523,659,784].forEach((f,i)=>{
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.type='sine';
+      o.frequency.setValueAtTime(f, t+0.96);
+      g.gain.setValueAtTime(0.12, t+0.96);
+      g.gain.exponentialRampToValueAtTime(0.001, t+1.8);
+      o.start(t+0.96); o.stop(t+1.9);
+    });
+  }catch(e){}
+}
+// ─────────────────────────────────────────────────────────────────
+
 let _rolling=false;
 function doRoll(){if(myToken)socket.emit('ping',myToken);
   if(!RS||!myTurn(RS)||RS.rollsLeft<=0)return;
+  sndRoll();
   _rolling=true;
   const ANIM=600;
   document.querySelectorAll('.die:not(.held)').forEach((d,i)=>{
