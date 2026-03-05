@@ -490,6 +490,7 @@ function initApp(){
     myName=p.name; myToken=p.token; myProfileToken=p.profileToken||null;
     localStorage.setItem('jambSession',JSON.stringify({token:p.token,profileToken:p.profileToken||null,name:p.name}));
     document.getElementById('lobName').textContent=p.name;
+    RS=null; myRoomId='';
     if(p.room){
       RS=p.room; myRoomId=p.room.id;
       if(p.room.state==='playing'){renderGame(p.room);show('gameScreen');}
