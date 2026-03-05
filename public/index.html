@@ -352,7 +352,8 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
   <div class="logo-sub">Hrvatska Igra · Online Multiplayer</div>
   <div class="login-card">
     <div><label class="flbl">Tvoje ime</label>
-    <input id="nameInput" type="text" placeholder="Upiši ime…" maxlength="20" autocomplete="off"></div>
+    <input id="nameInput" type="text" placeholder="Upiši ime…" maxlength="20" autocomplete="off">
+    <div id="nameErr" style="display:none;color:var(--red2);font-size:12px;margin-top:6px;font-family:'JetBrains Mono',monospace"></div></div>
     <button class="btn-gold" onclick="doLogin()">Igraj →</button>
   </div>
 </div>
@@ -380,8 +381,8 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
       </select></div>
       <div><label class="flbl">Broj kockica</label>
       <select id="numDice">
-        <option value="5" selected> 5 kockica (klasično)</option>
-        <option value="6"> 6 kockica</option>
+        <option value="5" selected>🎲 5 kockica (klasično)</option>
+        <option value="6">🎲🎲 6 kockica</option>
       </select></div>
       <button class="btn-gold" onclick="doCreateRoom()">Napravi sobu →</button>
       <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:16px">
@@ -423,6 +424,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
         <span>Upute</span>
       </div>
     <div class="game-menu-item" style="margin-top:auto;color:var(--red2)" onclick="toggleLobbyMenu();doLogout()">
+      <span>🚪</span>
       <span>Odjava</span>
     </div>
   </div>
@@ -445,7 +447,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
       <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:9px">Igrači</div>
       <div class="wait-chips" id="waitChips"></div>
     </div>
-    <div id="startWrap" style="display:none"><button class="btn-start" onclick="doStartGame()"> Pokreni igru →</button></div>
+    <div id="startWrap" style="display:none"><button class="btn-start" onclick="doStartGame()">🎲 Pokreni igru →</button></div>
     <div id="waitHint" style="color:var(--muted);font-size:13px;font-style:italic">Čekanje na hosta…</div>
     <button class="btn-sm" onclick="doLeaveRoom()" style="margin-top:4px">← Napusti sobu</button>
   </div>
@@ -533,6 +535,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
         <span>Upute</span>
       </div>
       <div class="game-menu-item" style="margin-top:auto;color:var(--red2)" onclick="toggleMenu();doLeaveRoom()">
+        <span>🚪</span>
         <span>Napusti igru</span>
       </div>
     </div>
@@ -753,13 +756,27 @@ function initApp(){
     if(emoji==='YAHTZEE'){sndYahtzee();showYahtzee(name);}
     else{sndReaction();showReaction(emoji,name);}
   });
-  socket.on('error',msg=>toast(msg,'err'));
+  socket.on('error',msg=>{
+    // Ako je greška o imenu i korisnik je na login ekranu — prikaži inline
+    if(document.getElementById('loginScreen').classList.contains('active')){
+      const err=document.getElementById('nameErr');
+      err.textContent=msg; err.style.display='block';
+      document.getElementById('nameInput').addEventListener('input',()=>err.style.display='none',{once:true});
+    } else {
+      toast(msg,'err');
+    }
+  });
   socket.on('roomClosed',({reason})=>{myRoomId='';RS=null;show('lobbyScreen');socket.emit('getRooms');toast(reason,'err');});
   socket.on('disconnect',()=>toast('Veza prekinuta…','err'));
 }
 
 // ── ACTIONS ────────────────────────────────────────────────────────
-function doLogin(){const n=document.getElementById('nameInput').value.trim();if(!n)return toast('Upiši ime!','err');socket.emit('setName',n);}
+function doLogin(){
+  const n=document.getElementById('nameInput').value.trim();
+  if(!n)return toast('Upiši ime!','err');
+  document.getElementById('nameErr').style.display='none';
+  socket.emit('setName',n);
+}
 function doLogout(){localStorage.removeItem('jambSession');myToken=null;myName='';if(myRoomId){socket.emit('leaveRoom',myRoomId);myRoomId='';}show('loginScreen');toast('Odjavljeni ste','info');}
 
 function doShowProfile(){socket.emit('getProfile');}
@@ -1111,7 +1128,7 @@ function scoreBlockHTML(player,room,pIdx,isMe){
   let html=`<div class="sc-block">
   <div class="sc-player-hdr">
     <div class="sc-player-dot" style="background:${color}">${esc(player.name[0].toUpperCase())}</div>
-    <div class="sc-player-name">${esc(player.name)}${isCurPlayer?' ':''}</div>
+    <div class="sc-player-name">${esc(player.name)}${isCurPlayer?' 🎲':''}</div>
     <div class="sc-player-score">${player.grandTotal}</div>
   </div>
   <table class="sc">

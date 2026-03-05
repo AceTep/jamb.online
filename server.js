@@ -220,8 +220,18 @@ io.on('connection',(socket)=>{
     const trimmed = name.trim().slice(0,20);
     if (!trimmed) return;
 
+    const key = trimmed.toLowerCase();
+    const existing = profileDB[key];
+
+    // Ako profil postoji, provjeri je li netko trenutno online s tim imenom
+    if (existing) {
+      const takenOnline = Object.values(players).find(p => p.name.toLowerCase() === key);
+      if (takenOnline) {
+        return socket.emit('error', `Ime "${trimmed}" je trenutno zauzeto — netko je već prijavljen s tim imenom!`);
+      }
+    }
+
     const profile = getOrCreateProfile(trimmed);
-    // Generiraj novi session token za ovu sesiju
     const sessionToken = genToken();
     sessions.set(sessionToken, { name: profile.name, profileToken: profile.token, lastSeen: Date.now(), socketId: socket.id });
     players[socket.id] = { id: socket.id, name: profile.name, token: sessionToken, profileToken: profile.token };
