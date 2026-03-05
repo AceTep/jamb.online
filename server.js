@@ -119,6 +119,32 @@ function updateProfileStats(name, { won, score, jambs }) {
   saveProfiles();
 }
 
+// ── PERSISTENT ROOMS (JSON na disku) ─────────────────────────────────
+const ROOMS_FILE = path.join(DATA_DIR, 'rooms.json');
+if (!fs.existsSync(ROOMS_FILE)) fs.writeFileSync(ROOMS_FILE, '{}');
+
+function saveRooms() {
+  try {
+    const toSave = {};
+    for (const [id, room] of Object.entries(rooms)) {
+      if (room.state === 'finished') continue;
+      toSave[id] = room;
+    }
+    fs.writeFileSync(ROOMS_FILE, JSON.stringify(toSave, null, 2));
+  } catch(e) { console.error('Greška pri snimanju soba:', e); }
+}
+
+// Ucitaj sobe pri startu — igraci ce se reconnectati po imenu
+try {
+  const saved = JSON.parse(fs.readFileSync(ROOMS_FILE, 'utf8'));
+  for (const [id, room] of Object.entries(saved)) {
+    room.players.forEach(p => { p.id = null; }); // socket ID-jevi ne vrijede
+    room.host = null;
+    rooms[id] = room;
+  }
+  if (Object.keys(saved).length) console.log('📂 Ucitano', Object.keys(saved).length, 'soba s diska');
+} catch(e) {}
+
 // ── SESSION STORE (u memoriji, traje dok server radi) ─────────────────
 const SESSION_TTL = 60 * 60 * 1000; // 1h neaktivnosti
 const sessions = new Map(); // sessionToken → { name, profileToken, lastSeen, socketId }
@@ -159,6 +185,7 @@ function handleLeave(socket, rid) {
     if(room.currentPlayerIndex>=room.players.length) room.currentPlayerIndex=0;
     io.to(rid).emit('roomUpdate',room);
   }
+  saveRooms();
   io.emit('roomList',getRoomList());
 }
 
@@ -210,7 +237,6 @@ io.on('connection',(socket)=>{
 
   // ── OBNOVA S PROFILE TOKEN (trajni — preživljava restart servera) ──
   socket.on('resumeWithProfileToken',(profileToken)=>{
-    // Pronađi profil po token-u
     const profile = Object.values(profileDB).find(p => p.token === profileToken);
     if (!profile) return socket.emit('sessionExpired');
 
@@ -218,7 +244,22 @@ io.on('connection',(socket)=>{
     sessions.set(sessionToken, { name: profile.name, profileToken, lastSeen: Date.now(), socketId: socket.id });
     players[socket.id] = { id: socket.id, name: profile.name, token: sessionToken, profileToken };
 
-    socket.emit('sessionResumed', { name: profile.name, token: sessionToken, profileToken: profileToken, room: null });
+    // Pronadi sobu u kojoj je igrac bio (po imenu)
+    let rejoinedRoom = null;
+    for (const room of Object.values(rooms)) {
+      const rp = room.players.find(p => p.name === profile.name);
+      if (rp) {
+        rp.id = socket.id;
+        rp.token = sessionToken;
+        socket.join(room.id);
+        rejoinedRoom = room;
+        if (room.hostToken === profileToken) room.host = socket.id;
+        break;
+      }
+    }
+
+    socket.emit('sessionResumed', { name: profile.name, token: sessionToken, profileToken, room: rejoinedRoom });
+    if (rejoinedRoom) io.to(rejoinedRoom.id).emit('roomUpdate', rejoinedRoom);
     socket.emit('roomList', getRoomList());
   });
 
@@ -238,7 +279,7 @@ io.on('connection',(socket)=>{
     const p=players[socket.id]; if(!p) return;
     const rid=Math.random().toString(36).slice(2,8).toUpperCase();
     rooms[rid]=createRoom(rid,roomName||`${p.name}'s soba`,socket.id,p.name,maxPlayers||4,numDice||5);
-    socket.join(rid); socket.emit('roomJoined',rooms[rid]); io.emit('roomList',getRoomList());
+    socket.join(rid); socket.emit('roomJoined',rooms[rid]); io.emit('roomList',getRoomList()); saveRooms();
   });
 
   socket.on('joinRoom',(rid)=>{
@@ -256,7 +297,7 @@ io.on('connection',(socket)=>{
     const room=rooms[rid]; if(!room||room.host!==socket.id) return;
     room.state='playing'; room.currentPlayerIndex=0; room.round=1;
     room.activeAnnouncement=null; Object.assign(room,newTurnState(room.numDice));
-    io.to(rid).emit('gameStarted',room); io.emit('roomList',getRoomList());
+    io.to(rid).emit('gameStarted',room); io.emit('roomList',getRoomList()); saveRooms();
   });
 
   socket.on('announce',({roomId,rowId})=>{
@@ -354,9 +395,10 @@ io.on('connection',(socket)=>{
           jambs
         });
       });
-      io.to(roomId).emit('gameOver',room); io.emit('roomList',getRoomList()); return;
+      saveRooms(); io.to(roomId).emit('gameOver',room); io.emit('roomList',getRoomList()); return;
     }
     advanceTurn(room);
+    saveRooms();
     io.to(roomId).emit('roomUpdate',room);
   });
 
