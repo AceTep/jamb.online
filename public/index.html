@@ -362,6 +362,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     <div class="rdots" id="rdots"></div>
     <span class="rdot-txt" id="rdotTxt"></span>
     <button class="ico-btn" id="themeBtn3" onclick="toggleTheme()">🌙</button>
+    <button class="ico-btn" onclick="showHint()" title="Upute">?</button>
     <button class="btn-sm" onclick="doLeaveRoom()">Napusti</button>
   </div>
   <div class="info-bar" id="infoBar">
@@ -503,6 +504,7 @@ function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.re
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function toast(msg,type=''){const el=document.getElementById('toast');document.getElementById('toast-msg').textContent=msg;el.className='toast show '+type;clearTimeout(el._t);el._t=setTimeout(()=>dismissToast(),4000);}
 function dismissToast(){const el=document.getElementById('toast');clearTimeout(el._t);el.className='toast';}
+function showHint(){const b=document.getElementById('infoBar');b.classList.add('on');clearTimeout(b._t);b._t=setTimeout(()=>b.classList.remove('on'),6000);}
 function myTurn(room){return room.players[room.currentPlayerIndex]?.id===socket.id;}
 
 const DOT_POS={1:[[23,23]],2:[[11,11],[35,35]],3:[[11,11],[23,23],[35,35]],4:[[11,11],[35,11],[11,35],[35,35]],5:[[11,11],[35,11],[23,23],[11,35],[35,35]],6:[[11,11],[35,11],[11,23],[35,23],[11,35],[35,35]]};
