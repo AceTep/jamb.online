@@ -427,13 +427,18 @@ io.on('connection',(socket)=>{
     if (!hasSession) {
       Object.keys(rooms).forEach(rid=>{if(rooms[rid]?.players.find(rp=>rp.id===socket.id))handleLeave(socket,rid);});
     } else {
-      delete players[socket.id];
+      // Ima sesiju — za solo sobu odmah obriši, za multiplayer ostavi (mogu se reconnectat)
       for (const room of Object.values(rooms)) {
         if (room.players.find(rp => rp.id === socket.id)) {
-          io.to(room.id).emit('playerOffline', { socketId: socket.id, name: p.name });
+          if (room.maxPlayers === 1) {
+            handleLeave(socket, room.id); // solo — obriši sobu
+          } else {
+            io.to(room.id).emit('playerOffline', { socketId: socket.id, name: p.name });
+          }
           break;
         }
       }
+      delete players[socket.id];
       return;
     }
     delete players[socket.id];

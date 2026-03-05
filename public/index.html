@@ -107,17 +107,6 @@ select:focus{border-color:var(--gold)} select option{background:var(--s1)}
 .rdot.on{background:var(--gold);box-shadow:0 0 5px rgba(184,134,11,.6)}
 .rdot-txt{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);flex-shrink:0}
 
-/* ── TAB BAR (mobile + desktop) ─────────────────────── */
-.tab-bar{display:flex;background:var(--s1);border-bottom:1px solid var(--border);flex-shrink:0}
-.tab-btn{flex:1;padding:10px 4px 8px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:3px}
-.tab-btn .tab-icon{font-size:15px;line-height:1}
-.tab-btn:hover{color:var(--text)}
-.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
-.tab-badge{background:var(--gold);color:#111;font-size:7px;font-weight:700;border-radius:8px;padding:1px 5px;font-family:'Karla',sans-serif;letter-spacing:0;line-height:1.4}
-/* Tab panels */
-.tab-panel{display:none;flex:1;overflow:hidden;min-height:0}
-.tab-panel.active{display:flex;flex-direction:column}
-
 /* Kontra bar */
 .kontra-bar{background:rgba(192,90,16,.08);border-bottom:2px solid rgba(192,90,16,.25);padding:6px 14px;display:none;align-items:center;gap:8px;font-size:12px;flex-shrink:0}
 .kontra-bar.on{display:flex}
@@ -125,6 +114,7 @@ select:focus{border-color:var(--gold)} select option{background:var(--s1)}
 .kontra-bar span{color:var(--muted);font-size:11px}
 
 /* ───── GAME BODY ───── */
+/* [scorecard(s)][dice][....empty....][sidebar] */
 .g-body{flex:1;display:flex;flex-direction:row;overflow:hidden;min-height:0}
 .sc-area{flex:0 0 auto}
 .dice-panel{flex:1}
@@ -223,26 +213,15 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 .chat-snd{background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:6px 9px;color:var(--muted);cursor:pointer;font-size:12px;flex-shrink:0}
 .chat-snd:hover{color:var(--gold)}
 
-/* ═══════════════ DESKTOP: sidebar visible, tabs hidden ═══════════════ */
-@media(min-width:769px){
-  .tab-bar{display:none}
-  .tab-panel{display:flex!important;flex-direction:row;flex:1;overflow:hidden;min-height:0}
-  /* on desktop all 3 panels show side by side inside .g-body */
-  #tab-table{flex:0 0 auto;overflow:hidden}
-  #tab-dice{flex:1;overflow:hidden}
-  #tab-players{flex:0 0 220px;overflow:hidden}
-}
-
-/* ═══════════════ MOBILE: tabs visible, panels switch ═══════════════ */
+/* ═══════════════ MOBILE ═══════════════ */
 @media(max-width:768px){
-  #gameScreen{height:100vh;overflow:hidden}
-  .g-body{flex:1;flex-direction:column;overflow:hidden;min-height:0}
-  .tab-panel{flex:1;overflow-y:auto;min-height:0}
-  .tab-panel.active{display:flex;flex-direction:column}
-  .dice-panel{border-right:none;border-bottom:none;overflow-y:auto;width:100%}
-  .g-sidebar{border-left:none;width:100%;height:100%;max-height:none;flex:1}
-  .g-sidebar .chat-wrap{flex:1}
-  .sc-area{width:100%;overflow-x:visible;overflow-y:visible;border-right:none;flex-direction:column}
+  #gameScreen{height:auto;min-height:100vh;overflow-y:auto}
+  .g-body{display:flex;flex-direction:column;overflow:visible;height:auto}
+  /* order: kockice → igrači/chat → tablica */
+  .dice-panel{order:1;width:100%;border-right:none;border-bottom:1px solid var(--border);overflow-y:visible}
+  .g-sidebar{order:2;width:100%;height:auto;max-height:none;border-left:none;border-bottom:1px solid var(--border)}
+  .g-sidebar .chat-wrap{height:180px}
+  .sc-area{order:3;width:100%;overflow-x:visible;overflow-y:visible;border-right:none;flex-direction:column}
   .sc-block{width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--border)}
   .add-sc-btn{display:none}
   table.sc{font-size:11px}
@@ -354,52 +333,34 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     ⚡ Kontra aktivna: <strong id="kontraRowTxt"></strong>
     <span id="kontraByTxt"></span>
   </div>
-  <!-- TAB BAR (vidljiv samo na mobilnom) -->
-  <div class="tab-bar">
-    <button class="tab-btn active" id="tab-btn-table" onclick="switchTab('table')">
-      <span class="tab-icon">📋</span>Tablica
-    </button>
-    <button class="tab-btn" id="tab-btn-dice" onclick="switchTab('dice')">
-      <span class="tab-icon">🎲</span>Kockice
-      <span class="tab-badge" id="tabDiceBadge" style="display:none"></span>
-    </button>
-    <button class="tab-btn" id="tab-btn-players" onclick="switchTab('players')">
-      <span class="tab-icon">👥</span>Igrači
-      <span class="tab-badge" id="tabChatBadge" style="display:none">!</span>
-    </button>
-  </div>
   <div class="g-body">
-    <!-- TAB: Tablica -->
-    <div class="tab-panel active" id="tab-table">
-      <div class="sc-area" id="scArea"></div>
+    <!-- Scorecards (one per visible player) -->
+    <div class="sc-area" id="scArea">
+      <!-- populated by JS -->
     </div>
-    <!-- TAB: Kockice -->
-    <div class="tab-panel" id="tab-dice">
-      <div class="dice-panel">
-        <div class="dice-row" id="diceRow"></div>
-        <button class="roll-btn" id="rollBtn" onclick="doRoll()">🎲 Baci kockice</button>
-        <div class="dice-hint" id="diceHint">Baci kockice za početak</div>
-        <div class="ann-box" id="annBox">
-          <div class="ann-lbl">📢 Najava</div>
-          <div class="ann-val" id="annVal">—</div>
-          <div class="ann-sub">Automatski se upisuje</div>
-        </div>
+    <!-- Dice -->
+    <div class="dice-panel">
+      <div class="dice-row" id="diceRow"></div>
+      <button class="roll-btn" id="rollBtn" onclick="doRoll()">🎲 Baci kockice</button>
+      <div class="dice-hint" id="diceHint">Baci kockice za početak</div>
+      <div class="ann-box" id="annBox">
+        <div class="ann-lbl">📢 Najava</div>
+        <div class="ann-val" id="annVal">—</div>
+        <div class="ann-sub">Automatski se upisuje</div>
       </div>
     </div>
-    <!-- TAB: Igrači + Chat -->
-    <div class="tab-panel" id="tab-players">
-      <div class="g-sidebar">
-        <div class="sb-sect">
-          <div class="sb-lbl">Igrači</div>
-          <div id="gPlayers"></div>
-        </div>
-        <div class="chat-wrap">
-          <div class="sb-lbl" style="padding:10px 10px 0">Chat</div>
-          <div class="chat-msgs" id="chatMsgs"></div>
-          <div class="chat-inp">
-            <input id="chatIn" type="text" placeholder="Poruka…" maxlength="200" onkeydown="if(event.key==='Enter')doSendChat()">
-            <button class="chat-snd" onclick="doSendChat()">→</button>
-          </div>
+    <!-- Sidebar -->
+    <div class="g-sidebar">
+      <div class="sb-sect">
+        <div class="sb-lbl">Igrači</div>
+        <div id="gPlayers"></div>
+      </div>
+      <div class="chat-wrap">
+        <div class="sb-lbl" style="padding:10px 10px 0">Chat</div>
+        <div class="chat-msgs" id="chatMsgs"></div>
+        <div class="chat-inp">
+          <input id="chatIn" type="text" placeholder="Poruka…" maxlength="200" onkeydown="if(event.key==='Enter')doSendChat()">
+          <button class="chat-snd" onclick="doSendChat()">→</button>
         </div>
       </div>
     </div>
@@ -568,7 +529,6 @@ function initApp(){
     },100);
   });
   socket.on('chatMessage',msg=>{
-    notifyTab('players');
     const el=document.getElementById('chatMsgs');
     const d=document.createElement('div');d.className='cmsg'+(msg.name?'':' sys');
     d.innerHTML=msg.name?`<span class="cn">${esc(msg.name)}</span><span class="ct">${esc(msg.text)}</span>`:`<span class="ct">${esc(msg.text)}</span>`;
@@ -632,8 +592,6 @@ function renderWait(room){
 // ── RENDER GAME ────────────────────────────────────────────────────
 function renderGame(room){
   const me=myTurn(room);
-  // Na mobilnom: automatski prebaci na kockice kad je tvoj red
-  if(me && !room.hasRolled) notifyTab('dice','▶');
   const cur=room.players[room.currentPlayerIndex];
   document.getElementById('gRound').textContent=room.round;
   document.getElementById('gCurPlayer').textContent=cur?.name??'?';
