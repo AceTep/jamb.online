@@ -558,7 +558,11 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     <table><thead><tr><th>#</th><th>Igrač</th><th>Bodovi</th><th></th></tr></thead>
     <tbody id="goResults"></tbody></table>
   </div>
-  <button class="btn-gold" style="width:auto;padding:13px 36px" onclick="goLobby()">← Natrag na lobby</button>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <button id="rematchBtn" class="btn-start" style="display:none;padding:13px 36px" onclick="doRematch()">🔄 Igraj ponovo</button>
+    <button class="btn-gold" style="width:auto;padding:13px 36px" onclick="goLobby()">← Natrag na lobby</button>
+  </div>
+  <div id="rematchHint" style="font-size:12px;color:var(--muted);display:none">Čekanje da host pokrene novu igru…</div>
 </div>
 <div id="toast"><span id="toast-msg"></span><button id="toast-x" onclick="dismissToast()">✕</button></div>
 
@@ -726,6 +730,7 @@ function initApp(){
     }
   });
   socket.on('gameOver',room=>{RS=room;sndFanfara();renderGameOver(room);show('gameOverScreen');});
+  socket.on('rematchStarted',room=>{RS=room;myRoomId=room.id;renderGame(room);show('gameScreen');mobInit();toast('🔄 Nova igra počinje!','ok');});
 
   socket.on('autoScored',({col,rowId,score,playerName})=>{
     toast(`✅ Auto-upis: ${RL[rowId]} → ${score} (${playerName})`,'ok');
@@ -953,6 +958,7 @@ function showYahtzee(name){
   toast(`🎲 YAHTZEE! — ${name}`,'ok',2500);
 }
 function goLobby(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');if(myToken)socket.emit('ping',myToken);}
+function doRematch(){if(!myRoomId)return;socket.emit('rematch',myRoomId);}
 
 
 // ── RENDER ROOM LIST ───────────────────────────────────────────────
@@ -1213,6 +1219,11 @@ function renderGameOver(room){
       <td style="font-family:'JetBrains Mono',monospace">${p.grandTotal}</td>
       <td style="color:var(--muted);font-size:11px">📋</td>
     </tr>`).join('');
+  // Prikaži rematch gumb samo hostu, hint ostalima (ne u solo igri)
+  const isHost=room.host===socket.id;
+  const isSolo=room.maxPlayers===1;
+  document.getElementById('rematchBtn').style.display=(!isSolo&&isHost)?'inline-block':'none';
+  document.getElementById('rematchHint').style.display=(!isSolo&&!isHost)?'block':'none';
 }
 
 function showGoScorecard(pid){

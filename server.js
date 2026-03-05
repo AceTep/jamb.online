@@ -479,6 +479,27 @@ io.on('connection',(socket)=>{
 
   socket.on('leaveRoom',(rid)=>handleLeave(socket,rid));
 
+  socket.on('rematch',(rid)=>{
+    const room=rooms[rid]; if(!room||room.host!==socket.id) return;
+    if(room.state!=='finished') return;
+    // Reset igre — zadrži iste igrače i postavke
+    room.state='playing';
+    room.currentPlayerIndex=0;
+    room.round=1;
+    room.activeAnnouncement=null;
+    room.announcement=null;
+    Object.assign(room, newTurnState(room.numDice));
+    // Reset scorecard za svakog igrača
+    room.players.forEach(p=>{
+      p.scorecard=newScorecard();
+      p.colTotals={g:0,d:0,sl:0,naj:0,kon:0};
+      p.grandTotal=0;
+    });
+    saveRooms();
+    io.to(rid).emit('rematchStarted', room);
+    io.emit('roomList', getRoomList());
+  });
+
   socket.on('disconnect',()=>{
     const p = players[socket.id];
     const token = p?.token;
