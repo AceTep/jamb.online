@@ -271,6 +271,11 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 .res-card td{padding:10px 16px;font-size:13px;border-top:1px solid var(--faint)}
 .res-card tr.winner td{color:var(--gold);font-weight:700;background:rgba(184,134,11,.05)}
 
+/* Game over clickable rows */
+.go-row{cursor:pointer;transition:background .15s}
+.go-row:hover td{background:var(--s2)}
+.res-card table thead tr th:last-child{width:24px}
+
 /* ═══════════════ TOAST ═══════════════ */
 #toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--s1);border:1.5px solid var(--border);border-radius:9px;padding:10px 36px 10px 18px;font-size:13px;z-index:999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);max-width:90vw;text-align:center;box-shadow:0 6px 24px var(--sh);pointer-events:none}
 #toast.show{transform:translateX(-50%) translateY(0);pointer-events:auto}
@@ -300,9 +305,8 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     <div class="tb-logo">JAMB</div>
     <div class="tb-right">
       <div class="tb-player" onclick="doShowProfile()" style="cursor:pointer;user-select:none" title="Klikni za profil">👤 <b id="lobName"></b></div>
-      <button class="btn-sm" onclick="doShowProfile()">📊 Profil</button>
       <button class="ico-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
-      <button class="btn-sm" onclick="doLogout()" title="Odjava">🚪</button>
+      <button class="btn-sm" onclick="doLogout()" title="Odjava">Odjava</button>
     </div>
   </div>
   <div class="lobby-body">
@@ -426,7 +430,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
   <div class="go-title">KRAJ IGRE</div>
   <div class="go-sub">Konačni rezultati</div>
   <div class="res-card">
-    <table><thead><tr><th>#</th><th>Igrač</th><th>Bodovi</th></tr></thead>
+    <table><thead><tr><th>#</th><th>Igrač</th><th>Bodovi</th><th></th></tr></thead>
     <tbody id="goResults"></tbody></table>
   </div>
   <button class="btn-gold" style="width:auto;padding:13px 36px" onclick="goLobby()">← Natrag na lobby</button>
@@ -458,12 +462,12 @@ const RL={};ROWS.forEach(r=>RL[r.id]=r.label);
 const COLS=['g','d','sl','naj','kon'];
 
 // ── CLIENT LOGIC ───────────────────────────────────────────────────
-function getNext(col,sc){
-  if(col==='g') return RI.find(r=>sc[r]===undefined)||null;
-  if(col==='d') return [...RI].reverse().find(r=>sc[r]===undefined)||null;
+function getNext(col,colSc){
+  if(col==='g') return RI.find(r=>colSc[r]===undefined)||null;
+  if(col==='d') return [...RI].reverse().find(r=>colSc[r]===undefined)||null;
   return null;
 }
-function canScore(col,rid,sc){if(sc[rid]!==undefined)return false;const n=getNext(col,sc);return n===null||n===rid;}
+function canScore(col,rid,sc){const colSc=sc[col];if(colSc[rid]!==undefined)return false;const n=getNext(col,colSc);return n===null||n===rid;}
 function scoreWith(rid,dice){
   // Izračunaj bodove za točno ove kockice (bez best-5 logike)
   const c=Array(7).fill(0);dice.forEach(d=>c[d]++);const s=dice.reduce((a,b)=>a+b,0);
@@ -512,8 +516,7 @@ function dieSVG(n){return`<svg viewBox="0 0 46 46">${(DOT_POS[n]||[]).map(([cx,c
 
 // ── STATE ──────────────────────────────────────────────────────────
 let socket,myName='',myRoomId='',RS=null,myToken=null,myProfileToken=null;
-// visiblePlayers: set of player IDs whose scorecard is shown on desktop
-let visiblePlayers=new Set();
+
 
 // ── INIT ───────────────────────────────────────────────────────────
 function initApp(){
@@ -575,7 +578,7 @@ function initApp(){
   socket.on('roomList',renderRoomList);
   socket.on('roomJoined',room=>{myRoomId=room.id;RS=room;renderWait(room);show('roomScreen');});
   socket.on('roomUpdate',room=>{RS=room;if(room.state==='lobby')renderWait(room);else renderGame(room);});
-  socket.on('gameStarted',room=>{myRoomId=room.id;RS=room;visiblePlayers=new Set([socket.id]);renderGame(room);show('gameScreen');mobInit();
+  socket.on('gameStarted',room=>{myRoomId=room.id;RS=room;renderGame(room);show('gameScreen');mobInit();
     if(!localStorage.getItem('jambHintSeen')){
       document.getElementById('infoBar').classList.add('on');
       localStorage.setItem('jambHintSeen','1');
@@ -620,11 +623,6 @@ function doToggleActiveDie(i){if(!RS||!myTurn(RS)||!RS.hasRolled)return;socket.e
 function doSendChat(){const el=document.getElementById('chatIn');const t=el.value.trim();if(!t)return;socket.emit('chatMessage',{roomId:myRoomId,text:t});el.value='';}
 function goLobby(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');if(myToken)socket.emit('ping',myToken);}
 
-function togglePlayerView(pid){
-  if(visiblePlayers.has(pid)&&visiblePlayers.size>1){visiblePlayers.delete(pid);}
-  else{visiblePlayers.add(pid);}
-  if(RS)renderGame(RS);
-}
 
 // ── RENDER ROOM LIST ───────────────────────────────────────────────
 function renderRoomList(rooms){
@@ -684,8 +682,8 @@ function renderGame(room){
     const canToggle=scoringPhase;
     let lbl='';
     if(canHold&&held) lbl='<div class="hold-lbl">DRŽI</div>';
-    else if(scoringPhase&&!active) lbl='<div class="hold-lbl" style="color:var(--muted)">neaktivna</div>';
-    else if(scoringPhase&&active) lbl='<div class="hold-lbl" style="color:var(--green2)">✓ koristi</div>';
+    else if(scoringPhase&&!active) lbl='<div class="hold-lbl" style="color:var(--muted)">ne koristi</div>';
+    else if(scoringPhase&&active) lbl='<div class="hold-lbl" style="color:var(--green2)">✓ odabrana</div>';
     const dieClass=`die ${canHold&&held?'held':''} ${scoringPhase&&!active?'die-inactive':''} ${dim?'die-dim':''}`;
     const clickFn=canHold?`doToggleHold(${i})`:canToggle?`doToggleActiveDie(${i})`:'';
     return`<div class="die-wrap"><div class="${dieClass}" onclick="${clickFn}" style="${canHold||canToggle?'cursor:pointer':''}">${dieSVG(v)}${scoringPhase&&!active?'<div class="die-inactive-x">✕</div>':''}</div>${lbl}</div>`;
@@ -705,7 +703,7 @@ function renderGame(room){
   if(!me)hint=`Čekanje na ${cur?.name??''}…`;
   else if(mustKontraMe && !kontraAlreadyDone)hint=`⚡ Moraš upisati KONTRU: ${RL[room.activeAnnouncement.rowId]}`;
   else if(!room.hasRolled){if(room.announcement)hint=`📢 Najavljen: ${RL[room.announcement.rowId]} — baci!`;else hint='Možeš najaviti polje (📢) ili odmah baci';}
-  else if(room.rollsLeft===0){const aCount=(room.activeDice||[true,true,true,true,true,true]).filter(Boolean).length;if(room.announcement)hint=`📢 Upiši najavu: ${RL[room.announcement.rowId]} (${aCount} kockica aktivno)`;else hint=`Odaberi kockice za upis (${aCount}/6 aktivno) · klikni polje za upisati`;}
+  else if(room.rollsLeft===0){const aCount=(room.activeDice||[true,true,true,true,true,true]).filter(Boolean).length;const numDice=room.numDice||5;const maxTxt=numDice>5?' (max 5)':'';if(room.announcement)hint=`📢 Upiši najavu: ${RL[room.announcement.rowId]} · ${aCount} kockica odabrano${maxTxt}`;else hint=`Odaberi kockice za upis · ${aCount}/5 odabrano${maxTxt} · klikni polje`;}
   else hint='Klikni kockice da ih zadržiš, pa baci ponovo';
   document.getElementById('diceHint').textContent=hint;
 
@@ -722,37 +720,9 @@ function renderGame(room){
 // ── RENDER SCORECARDS ──────────────────────────────────────────────
 function renderScorecards(room){
   const area=document.getElementById('scArea');
-  // Ensure my ID is always in visible set
-  if(socket.id) visiblePlayers.add(socket.id);
-
-  // Build array: my card first, then others if visible
   const mine=room.players.find(p=>p.id===socket.id);
-  const others=room.players.filter(p=>p.id!==socket.id);
-
-  // Add-player buttons for desktop
-  const isMobile=window.innerWidth<=768;
-
   let html='';
-  // My card
   if(mine) html+=scoreBlockHTML(mine,room,room.players.indexOf(mine),true);
-  // Other visible cards
-  others.forEach(p=>{
-    if(visiblePlayers.has(p.id)||isMobile){
-      html+=scoreBlockHTML(p,room,room.players.indexOf(p),false);
-    }
-  });
-  // Add-card buttons for hidden players (desktop only)
-  if(!isMobile){
-    others.forEach(p=>{
-      if(!visiblePlayers.has(p.id)){
-        const color=PC[room.players.indexOf(p)%PC.length];
-        html+=`<div class="add-sc-btn" onclick="togglePlayerView('${p.id}')" title="Prikaži tablicu: ${esc(p.name)}">
-          <div class="add-icon" style="background:${color}20;border-color:${color}">${esc(p.name[0].toUpperCase())}</div>
-          <div class="add-name">${esc(p.name)}</div>
-        </div>`;
-      }
-    });
-  }
   area.innerHTML=html;
 }
 
@@ -768,14 +738,11 @@ function scoreBlockHTML(player,room,pIdx,isMe){
   const dice=room.dice;
   const color=PC[pIdx%PC.length];
 
-  // Hide button (only for non-me cards on desktop)
-  const hideBtn=!isMe?`<span onclick="togglePlayerView('${player.id}')" title="Sakrij" style="cursor:pointer;color:var(--muted);font-size:12px;margin-left:4px">×</span>`:'';
-
+  // (own card only — others are shown as hidden blocks)
   let html=`<div class="sc-block">
   <div class="sc-player-hdr">
     <div class="sc-player-dot" style="background:${color}">${esc(player.name[0].toUpperCase())}</div>
     <div class="sc-player-name">${esc(player.name)}${isCurPlayer?' 🎲':''}</div>
-    ${hideBtn}
     <div class="sc-player-score">${player.grandTotal}</div>
   </div>
   <table class="sc">
@@ -888,10 +855,51 @@ function renderPlayers(room){
 }
 
 // ── GAME OVER ──────────────────────────────────────────────────────
+let _goRoom=null;
 function renderGameOver(room){
+  _goRoom=room;
   const s=[...room.players].sort((a,b)=>b.grandTotal-a.grandTotal);
   document.getElementById('goResults').innerHTML=s.map((p,i)=>
-    `<tr class="${i===0?'winner':''}"><td>${['🥇','🥈','🥉'][i]||(i+1)+'.'}</td><td>${esc(p.name)}</td><td style="font-family:'JetBrains Mono',monospace">${p.grandTotal}</td></tr>`).join('');
+    `<tr class="${i===0?'winner':''} go-row" onclick="showGoScorecard('${p.id}')" title="Klikni za detalje">
+      <td>${['🥇','🥈','🥉'][i]||(i+1)+'.'}</td>
+      <td>${esc(p.name)}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${p.grandTotal}</td>
+      <td style="color:var(--muted);font-size:11px">📋</td>
+    </tr>`).join('');
+}
+
+function showGoScorecard(pid){
+  if(!_goRoom) return;
+  const player=_goRoom.players.find(p=>p.id===pid);
+  if(!player) return;
+  const pIdx=_goRoom.players.indexOf(player);
+  const color=PC[pIdx%PC.length];
+  const sc=player.scorecard||{g:{},d:{},sl:{},naj:{},kon:{}};
+  // Build read-only scorecard table
+  function roCell(col,rid){
+    const v=sc[col]?.[rid];
+    return`<td class="${v!==undefined?'cs':'ce'}">${v!==undefined?v:'·'}</td>`;
+  }
+  function roRow(id){
+    const row=ROWS.find(r=>r.id===id);
+    return`<tr><td style="font-size:11px;color:var(--muted)">${esc(row.label)}</td>${COLS.map(col=>roCell(col,id)).join('')}</tr>`;
+  }
+  let tbl=`<div style="overflow-x:auto"><table class="sc" style="font-size:11px">
+    <thead><tr><th></th><th class="ch-g">↓G</th><th class="ch-d">↑D</th><th class="ch-sl">★SL</th><th class="ch-naj">📢</th><th class="ch-kon">⚡</th></tr></thead>
+    <tbody>`;
+  ['r1','r2','r3','r4','r5','r6'].forEach(id=>{tbl+=roRow(id);});
+  tbl+=`<tr class="sc-calc"><td style="color:var(--muted);font-size:10px">Zbroj</td>${COLS.map(col=>{const s=upSum(sc[col]);return`<td style="font-weight:600">${s||''}</td>`;}).join('')}</tr>`;
+  tbl+=`<tr class="sc-calc"><td style="color:var(--green2);font-size:10px">Bonus</td>${COLS.map(col=>{const s=upSum(sc[col]);const any=['r1','r2','r3','r4','r5','r6'].some(k=>sc[col]?.[k]!==undefined);if(!any)return'<td></td>';return`<td style="color:var(--green2);font-weight:700">${s>=60?'+30':s>0?''+(-(60-s)):''}</td>`;}).join('')}</tr>`;
+  ['max','min'].forEach(id=>{tbl+=roRow(id);});
+  tbl+=`<tr class="sc-calc"><td style="color:var(--blue2);font-size:10px">(M−m)×1</td>${COLS.map(col=>{const d=diffVal(sc[col]);return`<td style="color:var(--blue2);font-weight:${d!==null?'700':'400'}">${d!==null?d:'—'}</td>`;}).join('')}</tr>`;
+  ['tris','skala_mala','skala_velika','full','poker','jamb'].forEach(id=>{tbl+=roRow(id);});
+  tbl+=`<tr class="sc-tot"><td style="font-size:10px">Stupac</td>${COLS.map(col=>`<td>${colTotal(sc[col])}</td>`).join('')}</tr>`;
+  tbl+=`<tr class="sc-grand"><td style="font-size:10px">🏆</td><td colspan="5" style="text-align:center">${grandTotal(sc)}</td></tr>`;
+  tbl+=`</tbody></table></div>`;
+
+  document.getElementById('goScName').innerHTML=`<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${color};vertical-align:middle;margin-right:6px"></span>${esc(player.name)}`;
+  document.getElementById('goScBody').innerHTML=tbl;
+  document.getElementById('goScModal').style.display='flex';
 }
 
 // Resize handler to re-render on breakpoint change
@@ -923,6 +931,17 @@ function mobNotify(tab){
   if(b) b.classList.add('on');
 }
 </script>
+
+<!-- Game Over Scorecard Modal -->
+<div id="goScModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:var(--s1);border:1.5px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin:0;font-size:16px;color:var(--gold)" id="goScName"></h2>
+      <button onclick="document.getElementById('goScModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div id="goScBody"></div>
+  </div>
+</div>
 
 <!-- Profile Modal -->
 <div id="profileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center;">

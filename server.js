@@ -327,7 +327,11 @@ io.on('connection',(socket)=>{
     room.dice=room.dice.map((d,i)=>room.heldDice[i]?d:rollN(1)[0]);
     room.rollsLeft--;
     room.hasRolled=true;
-    if(room.rollsLeft===0) room.heldDice=Array(room.numDice||5).fill(false);
+    if(room.rollsLeft===0){
+      const anyHeld=room.heldDice.some(Boolean);
+      room.activeDice=room.heldDice.map(h=>anyHeld?h:true);
+      room.heldDice=Array(room.numDice||5).fill(false);
+    }
     io.to(rid).emit('roomUpdate',room);
   });
 
@@ -344,7 +348,13 @@ io.on('connection',(socket)=>{
     if(room.players[room.currentPlayerIndex].id!==socket.id) return;
     if(!room.hasRolled) return;
     if(!room.activeDice) room.activeDice=Array(room.numDice||5).fill(true);
-    room.activeDice[index] = !room.activeDice[index];
+    const currentlyActive=room.activeDice[index];
+    // Ako pokušava aktivirati — provjeri da nema već 5 aktivnih
+    if(!currentlyActive){
+      const activeCount=room.activeDice.filter(Boolean).length;
+      if(activeCount>=5) return; // max 5
+    }
+    room.activeDice[index] = !currentlyActive;
     io.to(roomId).emit('roomUpdate',room);
   });
 
