@@ -20,7 +20,7 @@ function getNextRequired(col, scorecard) {
 }
 function canScore(col, rowId, scorecard) {
   if (scorecard[col][rowId] !== undefined) return false;
-  const next = getNextRequired(col, rowId);
+  const next = getNextRequired(col, scorecard);
   return next === null || next === rowId;
 }
 function scoreDice(rowId, dice) {
@@ -55,26 +55,27 @@ function isColComplete(colSc) { return ROW_ORDER.every(r => colSc[r] !== undefin
 function isGameOver(scorecard) { return COLS.every(col => isColComplete(scorecard[col])); }
 function newScorecard() { const sc={}; COLS.forEach(c=>{sc[c]={};}); return sc; }
 function rollN(n) { return Array.from({length:n},()=>Math.floor(Math.random()*6)+1); }
-function newTurnState() {
-  return { dice:[1,1,1,1,1,1], heldDice:[false,false,false,false,false,false], activeDice:[true,true,true,true,true,true], rollsLeft:3, hasRolled:false, announcement:null };
+function newTurnState(numDice) {
+  const n = numDice||5;
+  return { dice:Array(n).fill(1), heldDice:Array(n).fill(false), activeDice:Array(n).fill(true), rollsLeft:3, hasRolled:false, announcement:null };
 }
 function newPlayer(id, name, token) {
   return { id, name, token: token||null, scorecard:newScorecard(), colTotals:{g:0,d:0,sl:0,naj:0,kon:0}, grandTotal:0 };
 }
-function createRoom(id, name, hostId, hostName, maxPlayers) {
+function createRoom(id, name, hostId, hostName, maxPlayers, numDice) {
   const hostToken = Object.values(players).find(p=>p.id===hostId)?.token||null;
-  return { id, name, host:hostId, hostToken, maxPlayers:maxPlayers||4,
+  const nd = (numDice===5||numDice===6) ? numDice : 5;
+  return { id, name, host:hostId, hostToken, maxPlayers:maxPlayers||4, numDice:nd,
     players:[newPlayer(hostId,hostName,hostToken)], state:'lobby',
-    currentPlayerIndex:0, round:1, ...newTurnState(),
+    currentPlayerIndex:0, round:1, ...newTurnState(nd),
     activeAnnouncement:null, chat:[] };
 }
 function advanceTurn(room) {
   room.currentPlayerIndex = (room.currentPlayerIndex+1) % room.players.length;
   if (room.currentPlayerIndex === 0) room.round++;
   const prevAnn = room.activeAnnouncement;
-  Object.assign(room, newTurnState());
+  Object.assign(room, newTurnState(room.numDice));
   room.activeAnnouncement = prevAnn;
-  room.activeDice = [true,true,true,true,true,true];
 }
 
 // ── PERSISTENT PLAYER PROFILES (JSON na disku) ───────────────────────
@@ -146,7 +147,7 @@ setInterval(pruneOldSessions, 5 * 60 * 1000);
 const rooms = {}, players = {};
 
 function getRoomList() {
-  return Object.values(rooms).map(r=>({id:r.id,name:r.name,players:r.players.length,maxPlayers:r.maxPlayers,state:r.state,playerNames:r.players.map(p=>p.name)}));
+  return Object.values(rooms).map(r=>({id:r.id,name:r.name,players:r.players.length,maxPlayers:r.maxPlayers,numDice:r.numDice||5,state:r.state,playerNames:r.players.map(p=>p.name)}));
 }
 function handleLeave(socket, rid) {
   const room=rooms[rid]; if(!room) return;
@@ -236,7 +237,7 @@ io.on('connection',(socket)=>{
   socket.on('createRoom',({roomName,maxPlayers})=>{
     const p=players[socket.id]; if(!p) return;
     const rid=Math.random().toString(36).slice(2,8).toUpperCase();
-    rooms[rid]=createRoom(rid,roomName||`${p.name}'s soba`,socket.id,p.name,maxPlayers||4);
+    rooms[rid]=createRoom(rid,roomName||`${p.name}'s soba`,socket.id,p.name,maxPlayers||4,numDice||5);
     socket.join(rid); socket.emit('roomJoined',rooms[rid]); io.emit('roomList',getRoomList());
   });
 
@@ -254,7 +255,7 @@ io.on('connection',(socket)=>{
   socket.on('startGame',(rid)=>{
     const room=rooms[rid]; if(!room||room.host!==socket.id) return;
     room.state='playing'; room.currentPlayerIndex=0; room.round=1;
-    room.activeAnnouncement=null; Object.assign(room,newTurnState());
+    room.activeAnnouncement=null; Object.assign(room,newTurnState(room.numDice));
     io.to(rid).emit('gameStarted',room); io.emit('roomList',getRoomList());
   });
 
@@ -276,7 +277,7 @@ io.on('connection',(socket)=>{
     room.dice=room.dice.map((d,i)=>room.heldDice[i]?d:rollN(1)[0]);
     room.rollsLeft--;
     room.hasRolled=true;
-    if(room.rollsLeft===0) room.heldDice=[false,false,false,false,false,false];
+    if(room.rollsLeft===0) room.heldDice=Array(room.numDice||5).fill(false);
     io.to(rid).emit('roomUpdate',room);
   });
 
@@ -292,7 +293,7 @@ io.on('connection',(socket)=>{
     const room=rooms[roomId]; if(!room||room.state!=='playing') return;
     if(room.players[room.currentPlayerIndex].id!==socket.id) return;
     if(!room.hasRolled) return;
-    if(!room.activeDice) room.activeDice=[true,true,true,true,true,true];
+    if(!room.activeDice) room.activeDice=Array(room.numDice||5).fill(true);
     room.activeDice[index] = !room.activeDice[index];
     io.to(roomId).emit('roomUpdate',room);
   });
@@ -324,7 +325,7 @@ io.on('connection',(socket)=>{
     }
     if(!canScore(col,row,cur.scorecard)) return socket.emit('error','Ne možeš upisati tu!');
 
-    if(!room.activeDice) room.activeDice=[true,true,true,true,true,true];
+    if(!room.activeDice) room.activeDice=Array(room.numDice||5).fill(true);
     const activeDice = room.dice.filter((_,i) => room.activeDice[i]);
     if(activeDice.length === 0) return socket.emit('error','Moraš odabrati barem jednu kockicu!');
     cur.scorecard[col][row] = scoreDice(row, activeDice);
