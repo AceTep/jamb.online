@@ -346,6 +346,15 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
         <option value="6">🎲🎲 6 kockica</option>
       </select></div>
       <button class="btn-gold" onclick="doCreateRoom()">Napravi sobu →</button>
+      <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:16px">
+        <label class="flbl">Pridruži se kodom</label>
+        <div style="display:flex;gap:8px">
+          <input id="joinCodeInput" type="text" placeholder="Npr. VV14LW…" maxlength="6"
+            style="text-transform:uppercase;letter-spacing:3px;font-family:'JetBrains Mono',monospace;font-size:15px;flex:1"
+            onkeydown="if(event.key==='Enter')doJoinByCode()">
+          <button class="btn-gold" style="width:auto;padding:0 18px;white-space:nowrap" onclick="doJoinByCode()">Spoji →</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -391,7 +400,8 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
   <div class="wait-body">
     <div>
       <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Kod sobe</div>
-      <div class="room-code-box" id="roomCode">——</div>
+      <div class="room-code-box" id="roomCode" onclick="copyRoomCode()" title="Klikni za kopiranje" style="cursor:pointer;user-select:none">——</div>
+      <div id="copyHint" style="font-size:11px;color:var(--muted);margin-top:6px;opacity:0;transition:opacity .3s">✓ Kopirano!</div>
     </div>
     <div style="color:var(--muted);font-size:13px">Podijeli kod s prijateljem da se spoji</div>
     <div>
@@ -400,6 +410,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     </div>
     <div id="startWrap" style="display:none"><button class="btn-start" onclick="doStartGame()">🎲 Pokreni igru →</button></div>
     <div id="waitHint" style="color:var(--muted);font-size:13px;font-style:italic">Čekanje na hosta…</div>
+    <button class="btn-sm" onclick="doLeaveRoom()" style="margin-top:4px">← Napusti sobu</button>
   </div>
 </div>
 
@@ -715,7 +726,9 @@ function renderProfileModal(data){
 }
 function doCreateRoom(){const name=document.getElementById('newRoomName').value.trim();const max=parseInt(document.getElementById('maxPlayers').value);const nd=parseInt(document.getElementById('numDice').value);socket.emit('createRoom',{roomName:name,maxPlayers:max,numDice:nd});}
 function doJoinRoom(id){socket.emit('joinRoom',id);}
+function doJoinByCode(){const code=document.getElementById('joinCodeInput').value.trim().toUpperCase();if(!code)return toast('Upiši kod sobe!','err');socket.emit('joinRoom',code);document.getElementById('joinCodeInput').value='';}
 function doStartGame(){socket.emit('startGame',myRoomId);}
+function copyRoomCode(){const code=document.getElementById('roomCode').textContent;navigator.clipboard.writeText(code).then(()=>{const h=document.getElementById('copyHint');h.style.opacity='1';clearTimeout(h._t);h._t=setTimeout(()=>h.style.opacity='0',2000);});}
 function doLeaveRoom(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');if(myToken)socket.emit('ping',myToken);}
 function doRoll(){if(myToken)socket.emit('ping',myToken);
   if(!RS||!myTurn(RS)||RS.rollsLeft<=0)return;

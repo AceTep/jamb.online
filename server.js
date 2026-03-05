@@ -63,9 +63,11 @@ function newPlayer(id, name, token) {
   return { id, name, token: token||null, scorecard:newScorecard(), colTotals:{g:0,d:0,sl:0,naj:0,kon:0}, grandTotal:0 };
 }
 function createRoom(id, name, hostId, hostName, maxPlayers, numDice) {
-  const hostToken = Object.values(players).find(p=>p.id===hostId)?.token||null;
+  const hostPlayer = Object.values(players).find(p=>p.id===hostId);
+  const hostToken = hostPlayer?.token||null;
+  const hostProfileToken = hostPlayer?.profileToken||null;
   const nd = (numDice===5||numDice===6) ? numDice : 5;
-  return { id, name, host:hostId, hostToken, maxPlayers:maxPlayers||4, numDice:nd,
+  return { id, name, host:hostId, hostToken, hostProfileToken, maxPlayers:maxPlayers||4, numDice:nd,
     players:[newPlayer(hostId,hostName,hostToken)], state:'lobby',
     currentPlayerIndex:0, round:1, ...newTurnState(nd),
     activeAnnouncement:null, chat:[] };
@@ -282,7 +284,7 @@ io.on('connection',(socket)=>{
         rp.token = sessionToken;
         socket.join(room.id);
         rejoinedRoom = room;
-        if (room.hostToken === profileToken) room.host = socket.id;
+        if (room.hostProfileToken === profileToken) room.host = socket.id;
         break;
       }
     }
@@ -492,7 +494,7 @@ io.on('connection',(socket)=>{
           } else {
             io.to(room.id).emit('playerOffline', { socketId: socket.id, name: p.name });
             // Ako je owner u lobbyu — pokreni 20s timer za gašenje sobe
-            if (room.state === 'lobby' && room.hostToken === p.profileToken) {
+            if (room.state === 'lobby' && room.hostProfileToken === p.profileToken) {
               const rid = room.id;
               roomTimers.set(rid, setTimeout(() => {
                 const r = rooms[rid];
