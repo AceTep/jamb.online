@@ -170,6 +170,27 @@ function pruneOldSessions() {
 }
 setInterval(pruneOldSessions, 5 * 60 * 1000);
 
+// ── NEAKTIVNOST SOBE (5 min → brisanje) ──────────────────────────
+const ROOM_INACTIVITY = 5 * 60 * 1000;
+function touchRoom(rid) {
+  if (rooms[rid]) rooms[rid].lastActivity = Date.now();
+}
+function pruneInactiveRooms() {
+  const now = Date.now();
+  for (const [rid, room] of Object.entries(rooms)) {
+    const last = room.lastActivity || now;
+    if (now - last > ROOM_INACTIVITY) {
+      console.log(`🗑️  Soba ${rid} obrisana zbog neaktivnosti`);
+      io.to(rid).emit('roomClosed', { reason: 'Soba zatvorena zbog neaktivnosti (5 min).' });
+      io.socketsLeave(rid);
+      delete rooms[rid];
+    }
+  }
+  saveRooms();
+  io.emit('roomList', getRoomList());
+}
+setInterval(pruneInactiveRooms, 60 * 1000);
+
 const rooms = {}, players = {};
 
 function getRoomList() {
@@ -231,7 +252,14 @@ io.on('connection',(socket)=>{
     }
 
     socket.emit('sessionResumed', { name: s.name, token: sessionToken, profileToken: s.profileToken, room: rejoinedRoom });
-    if (rejoinedRoom) io.to(rejoinedRoom.id).emit('roomUpdate', rejoinedRoom);
+    if (rejoinedRoom) {
+      // Cancela timer za gašenje sobe ako se owner vratio
+      if (rejoinedRoom._ownerDisconnectTimer) {
+        clearTimeout(rejoinedRoom._ownerDisconnectTimer);
+        delete rejoinedRoom._ownerDisconnectTimer;
+      }
+      io.to(rejoinedRoom.id).emit('roomUpdate', rejoinedRoom);
+    }
     socket.emit('roomList', getRoomList());
   });
 
@@ -259,7 +287,13 @@ io.on('connection',(socket)=>{
     }
 
     socket.emit('sessionResumed', { name: profile.name, token: sessionToken, profileToken, room: rejoinedRoom });
-    if (rejoinedRoom) io.to(rejoinedRoom.id).emit('roomUpdate', rejoinedRoom);
+    if (rejoinedRoom) {
+      if (rejoinedRoom._ownerDisconnectTimer) {
+        clearTimeout(rejoinedRoom._ownerDisconnectTimer);
+        delete rejoinedRoom._ownerDisconnectTimer;
+      }
+      io.to(rejoinedRoom.id).emit('roomUpdate', rejoinedRoom);
+    }
     socket.emit('roomList', getRoomList());
   });
 
@@ -280,6 +314,7 @@ io.on('connection',(socket)=>{
     const rid=Math.random().toString(36).slice(2,8).toUpperCase();
     const nd=numDice||5, max=maxPlayers||4;
     rooms[rid]=createRoom(rid,roomName||`${p.name}'s soba`,socket.id,p.name,max,nd);
+    rooms[rid].lastActivity=Date.now();
     socket.join(rid);
     // Solo soba — odmah startaj igru bez čekaonice
     if(max===1){
@@ -299,6 +334,7 @@ io.on('connection',(socket)=>{
     if(room.players.find(x=>x.id===socket.id)){socket.join(rid);return socket.emit('roomJoined',room);}
     room.players.push(newPlayer(socket.id,p.name,p.token));
     socket.join(rid); socket.emit('roomJoined',room);
+    touchRoom(rid);
     io.to(rid).emit('roomUpdate',room); io.emit('roomList',getRoomList());
   });
 
@@ -322,6 +358,7 @@ io.on('connection',(socket)=>{
   socket.on('rollDice',(rid)=>{
     if(players[socket.id]?.token) touchSession(players[socket.id].token);
     const room=rooms[rid]; if(!room||room.state!=='playing') return;
+    touchRoom(rid);
     const cur=room.players[room.currentPlayerIndex];
     if(cur.id!==socket.id||room.rollsLeft<=0) return;
     room.dice=room.dice.map((d,i)=>room.heldDice[i]?d:rollN(1)[0]);
@@ -360,6 +397,7 @@ io.on('connection',(socket)=>{
 
   socket.on('scoreCategory',({roomId,col,row})=>{
     const room=rooms[roomId]; if(!room||room.state!=='playing') return;
+    touchRoom(roomId);
     const cur=room.players[room.currentPlayerIndex];
     if(cur.id!==socket.id) return socket.emit('error','Nije tvoj red!');
     if(!room.hasRolled) return socket.emit('error','Prvo baci kockice!');
@@ -423,6 +461,7 @@ io.on('connection',(socket)=>{
 
   socket.on('chatMessage',({roomId,text})=>{
     const p=players[socket.id],room=rooms[roomId]; if(!p||!room) return;
+    touchRoom(roomId);
     const msg={name:p.name,text:text.slice(0,200),ts:Date.now()};
     room.chat.push(msg); if(room.chat.length>80) room.chat.shift();
     io.to(roomId).emit('chatMessage',msg);
@@ -444,6 +483,20 @@ io.on('connection',(socket)=>{
             handleLeave(socket, room.id); // solo — obriši sobu
           } else {
             io.to(room.id).emit('playerOffline', { socketId: socket.id, name: p.name });
+            // Ako je owner u lobbyu — pokreni 20s timer za gašenje sobe
+            if (room.state === 'lobby' && room.hostToken === p.profileToken) {
+              const rid = room.id;
+              room._ownerDisconnectTimer = setTimeout(() => {
+                const r = rooms[rid];
+                if (!r) return;
+                console.log(`🗑️  Soba ${rid} zatvorena jer se owner nije vratio`);
+                io.to(rid).emit('roomClosed', { reason: `Host se odspojio — soba zatvorena.` });
+                io.socketsLeave(rid);
+                delete rooms[rid];
+                saveRooms();
+                io.emit('roomList', getRoomList());
+              }, 20 * 1000);
+            }
           }
           break;
         }

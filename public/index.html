@@ -98,14 +98,35 @@ select:focus{border-color:var(--gold)} select option{background:var(--s1)}
 
 /* ═══════════════ GAME SCREEN ═══════════════ */
 #gameScreen{flex-direction:column;height:100vh;overflow:hidden}
-.g-topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:nowrap;box-shadow:0 2px 8px var(--sh);flex-shrink:0;min-height:50px}
-.g-logo{font-family:'Bebas Neue',cursive;font-size:20px;color:var(--gold);letter-spacing:3px;flex-shrink:0}
+.g-topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px var(--sh);flex-shrink:0;min-height:50px}
+.g-logo{font-family:'Bebas Neue',cursive;font-size:20px;color:var(--gold);letter-spacing:3px;flex:1}
 .g-turn{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .g-turn b{color:var(--text);font-weight:500}
 .rdots{display:flex;gap:4px;align-items:center;flex-shrink:0}
 .rdot{width:8px;height:8px;border-radius:50%;background:var(--faint);transition:background .25s}
 .rdot.on{background:var(--gold);box-shadow:0 0 5px rgba(184,134,11,.6)}
 .rdot-txt{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);flex-shrink:0}
+/* Dice panel meta row */
+.dice-meta{display:flex;align-items:center;justify-content:space-between;padding:8px 4px 4px;gap:8px}
+.dice-meta-turn{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+.dice-meta-turn b{color:var(--text);font-weight:600}
+.dice-meta-rolls{display:flex;align-items:center;gap:6px}
+/* Hamburger menu */
+.game-menu-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;justify-content:flex-end}
+.game-menu-overlay.open{display:flex}
+.game-menu-panel{background:var(--s1);border-left:1px solid var(--border);width:240px;max-width:80vw;display:flex;flex-direction:column;gap:4px;padding:16px;box-shadow:-4px 0 24px var(--shmd);animation:slide-in-right .2s ease}
+@keyframes slide-in-right{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.game-menu-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.game-menu-item{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;transition:background .15s}
+.game-menu-item:hover{background:var(--s2)}
+/* Help modal */
+.help-sec{display:flex;flex-direction:column;gap:8px}
+.help-sec-title{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:700}
+.help-col-row{display:flex;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--faint)}
+.help-col-row:last-child{border-bottom:none}
+.help-col-badge{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;min-width:90px;flex-shrink:0}
+.help-score-row{background:var(--s2);border-radius:6px;padding:7px 10px;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.help-score-row span{font-size:11px;color:var(--muted)}
 
 /* Kontra bar */
 .info-bar{background:rgba(184,134,11,.08);border-bottom:2px solid rgba(184,134,11,.2);padding:7px 14px;display:none;align-items:center;justify-content:space-between;gap:8px;font-size:12px;flex-shrink:0;color:var(--gold)}
@@ -252,13 +273,12 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
   }
   .mob-tab .ti{font-size:18px;line-height:1}
   .mob-tab.on{color:var(--gold);border-top-color:var(--gold)}
-  .mob-tab .mbadge{
-    position:absolute;top:6px;right:calc(50% - 16px);
-    background:var(--gold);color:#111;
-    font-size:7px;font-weight:700;font-family:'Karla',sans-serif;
-    border-radius:8px;padding:1px 4px;line-height:1.4;display:none
+  .mob-tab .mbadge{display:none}
+  .mob-tab.notify{animation:tab-pulse 1s ease-in-out infinite}
+  @keyframes tab-pulse{
+    0%,100%{background:none}
+    50%{background:var(--gold)}
   }
-  .mob-tab .mbadge.on{display:block}
 }
 
 /* ═══════════════ GAME OVER ═══════════════ */
@@ -303,11 +323,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 <div id="lobbyScreen" class="screen">
   <div class="topbar">
     <div class="tb-logo">JAMB</div>
-    <div class="tb-right">
-      <div class="tb-player" onclick="doShowProfile()" style="cursor:pointer;user-select:none" title="Klikni za profil">👤 <b id="lobName"></b></div>
-      <button class="ico-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
-      <button class="btn-sm" onclick="doLogout()" title="Odjava">Odjava</button>
-    </div>
+    <button class="ico-btn" id="lobMenuBtn" onclick="toggleLobbyMenu()" title="Izbornik">☰</button>
   </div>
   <div class="lobby-body">
     <div class="rooms-panel">
@@ -334,14 +350,43 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
   </div>
 </div>
 
+<!-- LOBBY MENU -->
+<div id="lobbyMenu" class="game-menu-overlay" onclick="toggleLobbyMenu()">
+  <div class="game-menu-panel" onclick="event.stopPropagation()">
+    <div class="game-menu-hdr">
+      <span style="font-family:'Bebas Neue',cursive;font-size:18px;color:var(--gold);letter-spacing:3px">IZBORNIK</span>
+      <button onclick="toggleLobbyMenu()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <!-- Profil na vrhu -->
+    <div class="game-menu-item" onclick="toggleLobbyMenu();doShowProfile()">
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;color:#111;font-weight:700;font-size:14px" id="lobMenuAvatar">?</div>
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <span id="lobMenuName" style="font-weight:600;font-size:14px">—</span>
+        <span style="font-size:11px;color:var(--muted)">Klikni za profil</span>
+      </div>
+     
+    </div>
+    <div style="height:1px;background:var(--border);margin:4px 0"></div>
+    <div class="game-menu-item" onclick="toggleLobbyMenu();toggleTheme();updateMenuThemeLabel()">
+      <span id="lobMenuThemeIcon">🌙</span>
+      <span id="lobMenuThemeLabel">Tamna tema</span>
+    </div>
+      <div class="game-menu-item" onclick="toggleMenu();showHelp()">
+        <span>💡</span>
+        <span>Upute</span>
+      </div>
+    <div class="game-menu-item" style="margin-top:auto;color:var(--red2)" onclick="toggleLobbyMenu();doLogout()">
+      <span>🚪</span>
+      <span>Odjava</span>
+    </div>
+  </div>
+</div>
+
 <!-- WAITING ROOM -->
 <div id="roomScreen" class="screen">
   <div class="topbar">
     <div class="tb-logo">JAMB</div>
-    <div class="tb-right">
-      <button class="ico-btn" id="themeBtn2" onclick="toggleTheme()">🌙</button>
-      <button class="btn-sm" onclick="doLeaveRoom()">← Natrag</button>
-    </div>
+    <button class="ico-btn" onclick="toggleLobbyMenu()" title="Izbornik">☰</button>
   </div>
   <div class="wait-body">
     <div>
@@ -362,12 +407,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 <div id="gameScreen" class="screen">
   <div class="g-topbar">
     <div class="g-logo">JAMB</div>
-    <div class="g-turn">Runda <b id="gRound">1</b> · <b id="gCurPlayer">—</b></div>
-    <div class="rdots" id="rdots"></div>
-    <span class="rdot-txt" id="rdotTxt"></span>
-    <button class="ico-btn" id="themeBtn3" onclick="toggleTheme()">🌙</button>
-    <button class="ico-btn" onclick="showHint()" title="Upute">?</button>
-    <button class="btn-sm" onclick="doLeaveRoom()">Napusti</button>
+    <button class="ico-btn" id="menuBtn" onclick="toggleMenu()" title="Izbornik">☰</button>
   </div>
   <div class="info-bar" id="infoBar">
     <span id="infoBarMsg">💡 Baci kockice, zatim klikni na polje u tablici za upisati rezultat</span>
@@ -384,6 +424,13 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     </div>
     <!-- Dice -->
     <div class="dice-panel">
+      <div class="dice-meta">
+        <div class="dice-meta-turn">Runda <b id="gRound">1</b> · <b id="gCurPlayer">—</b></div>
+        <div class="dice-meta-rolls">
+          <div class="rdots" id="rdots"></div>
+          <span class="rdot-txt" id="rdotTxt"></span>
+        </div>
+      </div>
       <div class="dice-row" id="diceRow"></div>
       <button class="roll-btn" id="rollBtn" onclick="doRoll()">🎲 Baci kockice</button>
       <div class="dice-hint" id="diceHint">Baci kockice za početak</div>
@@ -409,7 +456,27 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
       </div>
     </div>
   </div>
-  <!-- MOB TAB BAR -->
+  <!-- HAMBURGER MENU PANEL -->
+  <div id="gameMenu" class="game-menu-overlay" onclick="toggleMenu()">
+    <div class="game-menu-panel" onclick="event.stopPropagation()">
+      <div class="game-menu-hdr">
+        <span style="font-family:'Bebas Neue',cursive;font-size:18px;color:var(--gold);letter-spacing:3px">IZBORNIK</span>
+        <button onclick="toggleMenu()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">✕</button>
+      </div>
+      <div class="game-menu-item" onclick="toggleTheme();updateMenuThemeLabel()">
+        <span id="menuThemeIcon">🌙</span>
+        <span id="menuThemeLabel">Tamna tema</span>
+      </div>
+      <div class="game-menu-item" onclick="toggleMenu();showHelp()">
+        <span>💡</span>
+        <span>Upute</span>
+      </div>
+      <div class="game-menu-item" style="margin-top:auto;color:var(--red2)" onclick="toggleMenu();doLeaveRoom()">
+        <span>🚪</span>
+        <span>Napusti igru</span>
+      </div>
+    </div>
+  </div>
   <div class="mob-tabs">
     <button class="mob-tab" id="mtab-sc" onclick="mobTab('sc')">
       <span class="ti">📋</span>Tablica
@@ -420,7 +487,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     </button>
     <button class="mob-tab" id="mtab-chat" onclick="mobTab('chat')">
       <span class="ti">👥</span>Igrači
-      <span class="mbadge on" id="mbadge-chat"></span>
+      <span class="mbadge" id="mbadge-chat"></span>
     </button>
   </div>
 </div>
@@ -442,9 +509,24 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 
 // ── THEME ──────────────────────────────────────────────────────────
 let dark=localStorage.getItem('jambTheme')==='dark';
-function applyTheme(){document.documentElement.setAttribute('data-theme',dark?'dark':'');const i=dark?'☀️':'🌙';['themeBtn','themeBtn2','themeBtn3'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=i;});}
+function applyTheme(){document.documentElement.setAttribute('data-theme',dark?'dark':'');updateMenuThemeLabel();}
 function toggleTheme(){dark=!dark;localStorage.setItem('jambTheme',dark?'dark':'light');applyTheme();}
 applyTheme();
+function toggleMenu(){const m=document.getElementById('gameMenu');m.classList.toggle('open');}
+function toggleLobbyMenu(){const m=document.getElementById('lobbyMenu');m.classList.toggle('open');}
+function setLobbyMenuProfile(name){
+  const av=document.getElementById('lobMenuAvatar');const nm=document.getElementById('lobMenuName');
+  if(av) av.textContent=name[0].toUpperCase();
+  if(nm) nm.textContent=name;
+}
+function updateMenuThemeLabel(){
+  // game menu
+  const el=document.getElementById('menuThemeLabel');const ic=document.getElementById('menuThemeIcon');
+  if(el){el.textContent=dark?'Svijetla tema':'Tamna tema';ic.textContent=dark?'☀️':'🌙';}
+  // lobby menu
+  const el2=document.getElementById('lobMenuThemeLabel');const ic2=document.getElementById('lobMenuThemeIcon');
+  if(el2){el2.textContent=dark?'Svijetla tema':'Tamna tema';ic2.textContent=dark?'☀️':'🌙';}
+}
 
 // ── CONSTANTS ──────────────────────────────────────────────────────
 const PC=['#c04020','#1a4a8a','#2a7a3a','#7a3a9a','#b8860b','#1a7a8a'];
@@ -508,6 +590,7 @@ function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.re
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function toast(msg,type=''){const el=document.getElementById('toast');document.getElementById('toast-msg').textContent=msg;el.className='toast show '+type;clearTimeout(el._t);el._t=setTimeout(()=>dismissToast(),4000);}
 function dismissToast(){const el=document.getElementById('toast');clearTimeout(el._t);el.className='toast';}
+function showHelp(){document.getElementById('helpModal').style.display='flex';}
 function showHint(){const b=document.getElementById('infoBar');b.classList.add('on');clearTimeout(b._t);b._t=setTimeout(()=>b.classList.remove('on'),6000);}
 function myTurn(room){return room.players[room.currentPlayerIndex]?.id===socket.id;}
 
@@ -541,7 +624,7 @@ function initApp(){
   socket.on('nameSet',p=>{
     myName=p.name; myToken=p.token; myProfileToken=p.profileToken||null;
     localStorage.setItem('jambSession',JSON.stringify({token:p.token,profileToken:p.profileToken||null,name:p.name}));
-    document.getElementById('lobName').textContent=p.name;
+    setLobbyMenuProfile(p.name);
     show('lobbyScreen');socket.emit('getRooms');
   });
 
@@ -549,7 +632,7 @@ function initApp(){
   socket.on('sessionResumed',(p)=>{
     myName=p.name; myToken=p.token; myProfileToken=p.profileToken||null;
     localStorage.setItem('jambSession',JSON.stringify({token:p.token,profileToken:p.profileToken||null,name:p.name}));
-    document.getElementById('lobName').textContent=p.name;
+    setLobbyMenuProfile(p.name);
     RS=null; myRoomId='';
     if(p.room){
       RS=p.room; myRoomId=p.room.id;
@@ -580,9 +663,8 @@ function initApp(){
   socket.on('roomUpdate',room=>{RS=room;if(room.state==='lobby')renderWait(room);else renderGame(room);});
   socket.on('gameStarted',room=>{myRoomId=room.id;RS=room;renderGame(room);show('gameScreen');mobInit();
     if(!localStorage.getItem('jambHintSeen')){
-      document.getElementById('infoBar').classList.add('on');
       localStorage.setItem('jambHintSeen','1');
-      setTimeout(()=>document.getElementById('infoBar').classList.remove('on'), 6000);
+      setTimeout(()=>showHelp(), 600);
     }
   });
   socket.on('gameOver',room=>{RS=room;renderGameOver(room);show('gameOverScreen');});
@@ -601,12 +683,36 @@ function initApp(){
     el.appendChild(d);el.scrollTop=el.scrollHeight;
   });
   socket.on('error',msg=>toast(msg,'err'));
+  socket.on('roomClosed',({reason})=>{myRoomId='';RS=null;show('lobbyScreen');socket.emit('getRooms');toast(reason,'err');});
   socket.on('disconnect',()=>toast('Veza prekinuta…','err'));
 }
 
 // ── ACTIONS ────────────────────────────────────────────────────────
 function doLogin(){const n=document.getElementById('nameInput').value.trim();if(!n)return toast('Upiši ime!','err');socket.emit('setName',n);}
 function doLogout(){localStorage.removeItem('jambSession');myToken=null;myName='';if(myRoomId){socket.emit('leaveRoom',myRoomId);myRoomId='';}show('loginScreen');toast('Odjavljeni ste','info');}
+
+function doShowProfile(){socket.emit('getProfile');}
+function closeProfileModal(){document.getElementById('profileModal').style.display='none';}
+function renderProfileModal(data){
+  document.getElementById('profName').textContent=data.name;
+  const s=data.stats||{};
+  const wr=s.gamesPlayed?Math.round(s.wins/s.gamesPlayed*100):0;
+  const avg=s.gamesPlayed?Math.round(s.totalScore/s.gamesPlayed):0;
+  document.getElementById('profStats').innerHTML=[
+    ['🎮 Odigrano',s.gamesPlayed||0],
+    ['🏆 Pobjede',s.wins||0],
+    ['📊 Win %',wr+'%'],
+    ['⭐ Jamb-ova',s.totalJambs||0],
+    ['🥇 Rekord',s.bestScore||0],
+    ['📈 Prosjek',avg],
+  ].map(([l,v])=>`<div style="background:var(--s2);border-radius:8px;padding:10px 12px">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${l}</div>
+    <div style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace">${v}</div>
+  </div>`).join('');
+  const d=new Date(data.createdAt);
+  document.getElementById('profSince').textContent=`Registriran/a: ${d.toLocaleDateString('hr-HR')}`;
+  document.getElementById('profileModal').style.display='flex';
+}
 function doCreateRoom(){const name=document.getElementById('newRoomName').value.trim();const max=parseInt(document.getElementById('maxPlayers').value);const nd=parseInt(document.getElementById('numDice').value);socket.emit('createRoom',{roomName:name,maxPlayers:max,numDice:nd});}
 function doJoinRoom(id){socket.emit('joinRoom',id);}
 function doStartGame(){socket.emit('startGame',myRoomId);}
@@ -760,12 +866,12 @@ function scoreBlockHTML(player,room,pIdx,isMe){
   html+=`<tr class="sc-calc"><td style="color:var(--green2)">Bonus</td>${COLS.map(col=>{const s=upSum(sc[col]);const any=['r1','r2','r3','r4','r5','r6'].some(k=>sc[col][k]!==undefined);if(!any)return'<td></td>';return`<td style="color:var(--green2);font-weight:700">${s>=60?'+30':s>0?''+(-(60-s)):''}</td>`;}).join('')}</tr>`;
 
   // ── DONJI DIO
-  html+=`<tr class="sc-sec"><td colspan="6">▸ Donji dio</td></tr>`;
+  html+=`<tr class="sc-sec"><td colspan="6">▸ Srednji dio </td></tr>`;
   ['max','min'].forEach(id=>html+=rowHTML(id,sc,canPick,canAct,dice,ann,activeAnn,player,room));
-  html+=`<tr class="sc-calc"><td style="color:var(--blue2)">(M−m)×1</td>${COLS.map(col=>{const d=diffVal(sc[col]);return`<td style="color:var(--blue2);font-weight:${d!==null?'700':'400'}">${d!==null?d:'—'}</td>`;}).join('')}</tr>`;
+  html+=`<tr class="sc-calc"><td style="color:var(--blue2)">Ukupno</td>${COLS.map(col=>{const d=diffVal(sc[col]);return`<td style="color:var(--blue2);font-weight:${d!==null?'700':'400'}">${d!==null?d:'—'}</td>`;}).join('')}</tr>`;
 
   // ── SREDNJI DIO
-  html+=`<tr class="sc-sec"><td colspan="6">▸ Srednji dio</td></tr>`;
+  html+=`<tr class="sc-sec"><td colspan="6">▸ Donji dio </td></tr>`;
   ['tris','skala_mala','skala_velika','full','poker','jamb'].forEach(id=>html+=rowHTML(id,sc,canPick,canAct,dice,ann,activeAnn,player,room));
 
   // Totals
@@ -918,8 +1024,8 @@ function mobTab(name){
     const b=document.getElementById('mtab-'+k);
     if(b) b.classList.toggle('on',k===name);
   });
-  if(name==='chat'){const b=document.getElementById('mbadge-chat');if(b)b.classList.remove('on');}
-  if(name==='dice'){const b=document.getElementById('mbadge-dice');if(b)b.classList.remove('on');}
+  if(name==='chat'){const b=document.getElementById('mtab-chat');if(b)b.classList.remove('notify');}
+  if(name==='dice'){const b=document.getElementById('mtab-dice');if(b)b.classList.remove('notify');}
 }
 function mobInit(){
   if(window.innerWidth<=768) mobTab('dice');
@@ -927,8 +1033,8 @@ function mobInit(){
 function mobNotify(tab){
   if(window.innerWidth>768) return;
   if(_mobTab===tab) return;
-  const b=document.getElementById('mbadge-'+tab);
-  if(b) b.classList.add('on');
+  const b=document.getElementById('mtab-'+tab);
+  if(b) b.classList.add('notify');
 }
 </script>
 
@@ -940,6 +1046,72 @@ function mobNotify(tab){
       <button onclick="document.getElementById('goScModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">✕</button>
     </div>
     <div id="goScBody"></div>
+  </div>
+</div>
+
+<!-- HELP MODAL -->
+<div id="helpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto">
+  <div style="background:var(--s1);border:1.5px solid var(--border);border-radius:16px;width:100%;max-width:600px;margin:auto;box-shadow:0 8px 40px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px 16px;border-bottom:1px solid var(--border)">
+      <h2 style="font-family:'Bebas Neue',cursive;font-size:24px;color:var(--gold);letter-spacing:3px;margin:0">KAKO SE IGRA JAMB</h2>
+      <button onclick="document.getElementById('helpModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:20px;font-size:14px;line-height:1.7">
+
+      <div class="help-sec">
+        <div class="help-sec-title">🎯 Cilj igre</div>
+        <p>Cilj je skupiti što više bodova upisivanjem rezultata kockica u tablicu. Svaki igrač igra po jedan potez — baci, drži kockice koje ti odgovaraju, baci ponovo (do 3× ukupno), pa upiši rezultat.</p>
+      </div>
+
+      <div class="help-sec">
+        <div class="help-sec-title">🎲 Tok poteza</div>
+        <ol style="padding-left:18px;display:flex;flex-direction:column;gap:6px">
+          <li>Klikni <b>Baci kockice</b> — imaš 3 bacanja po potezu.</li>
+          <li>Nakon prvog bacanja, klikni kockice koje želiš <b>zadržati</b> (označe se s "DRŽI").</li>
+          <li>Baci ponovo — samo nezadržane kockice se bacaju iznova.</li>
+          <li>Nakon zadnjeg bacanja, odaberi koje kockice <b>koristiš za upis</b> (max 5).</li>
+          <li>Klikni polje u tablici da upišeš rezultat.</li>
+        </ol>
+      </div>
+
+      <div class="help-sec">
+        <div class="help-sec-title">📋 Stupci tablice</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="help-col-row"><span class="help-col-badge" style="color:var(--blue2)">↓ Gore</span><span>Polja se moraju popunjavati <b>odozgo prema dolje</b> — ne možeš preskočiti red.</span></div>
+          <div class="help-col-row"><span class="help-col-badge" style="color:var(--green2)">↑ Dolje</span><span>Polja se moraju popunjavati <b>odozdo prema gore</b> — počinješ od jamb, gore do jedinica.</span></div>
+          <div class="help-col-row"><span class="help-col-badge" style="color:var(--purple2)">★ Slobodni</span><span>Možeš upisati u <b>bilo koje slobodno polje</b> u bilo kojem trenutku.</span></div>
+          <div class="help-col-row"><span class="help-col-badge" style="color:var(--orange2)">📢 Najava</span><span>Prije bacanja <b>najavi</b> koje polje planiraš upisati. Moraš ga upisati na kraju — bez obzira na rezultat.</span></div>
+          <div class="help-col-row"><span class="help-col-badge" style="color:var(--red2)">⚡ Kontra</span><span>Kad netko najavi polje, ostali igrači <b>moraju upisati kontru</b> za to polje u Kontra stupac.</span></div>
+        </div>
+      </div>
+
+      <div class="help-sec">
+        <div class="help-sec-title">🏆 Bodovanje</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="help-score-row"><b>1–6</b><span>Zbroj kockica s tim brojem</span></div>
+          <div class="help-score-row"><b>Bonus</b><span>+30 bod. ako je zbroj 1–6 ≥ 60</span></div>
+          <div class="help-score-row"><b>Max / Min</b><span>Zbroj svih kockica</span></div>
+          <div class="help-score-row"><b>(M−m)×1</b><span>Razlika Max i Min × broj jedinica</span></div>
+          <div class="help-score-row"><b>Tris</b><span>3 iste → zbroj + 10</span></div>
+          <div class="help-score-row"><b>Skala mala</b><span>1-2-3-4-5 → 35 bod.</span></div>
+          <div class="help-score-row"><b>Skala velika</b><span>2-3-4-5-6 → 42 bod.</span></div>
+          <div class="help-score-row"><b>Full</b><span>3+2 iste → zbroj + 30</span></div>
+          <div class="help-score-row"><b>Poker</b><span>4 iste → zbroj + 40</span></div>
+          <div class="help-score-row"><b>Jamb</b><span>5 istih → zbroj + 50</span></div>
+        </div>
+      </div>
+
+      <div class="help-sec">
+        <div class="help-sec-title">💡 Savjeti</div>
+        <ul style="padding-left:18px;display:flex;flex-direction:column;gap:5px">
+          <li>Najava donosi više bodova — ali ako promaš, moraš upisati <b>0</b>.</li>
+          <li>Kontra može biti rizična — pišeš što god baciš, bez izbora.</li>
+          <li>S 6 kockica biraš koje 5 koristiš za upis.</li>
+          <li>Pazi na bonus — pokušaj skupiti ≥ 60 u gornjim poljima.</li>
+        </ul>
+      </div>
+
+    </div>
   </div>
 </div>
 
