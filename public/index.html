@@ -214,18 +214,47 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 .chat-snd:hover{color:var(--gold)}
 
 /* ═══════════════ MOBILE ═══════════════ */
+/* ══ MOBILE TAB SYSTEM ══════════════════════════════════════════════ */
+.mob-tabs{display:none}
 @media(max-width:768px){
-  #gameScreen{height:auto;min-height:100vh;overflow-y:auto}
-  .g-body{display:flex;flex-direction:column;overflow:visible;height:auto}
-  /* order: kockice → igrači/chat → tablica */
-  .dice-panel{order:1;width:100%;border-right:none;border-bottom:1px solid var(--border);overflow-y:visible}
-  .g-sidebar{order:2;width:100%;height:auto;max-height:none;border-left:none;border-bottom:1px solid var(--border)}
-  .g-sidebar .chat-wrap{height:180px}
-  .sc-area{order:3;width:100%;overflow-x:visible;overflow-y:visible;border-right:none;flex-direction:column}
+  #gameScreen{height:100dvh;height:100vh;overflow:hidden}
+  .g-body{flex:1;overflow:hidden;min-height:0;position:relative}
+
+  /* Na mobu sakrij sve panele osim aktivnog */
+  .sc-area, .dice-panel, .g-sidebar{
+    display:none;position:absolute;inset:0;overflow-y:auto;
+    border:none;width:100%;height:100%
+  }
+  .sc-area.mob-active, .dice-panel.mob-active, .g-sidebar.mob-active{display:flex;flex-direction:column}
+  .sc-area.mob-active{flex-direction:column}
+
   .sc-block{width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--border)}
   .add-sc-btn{display:none}
   table.sc{font-size:11px}
   table.sc thead th:first-child{min-width:110px}
+
+  .mob-tabs{
+    display:flex;flex-shrink:0;
+    background:var(--s1);border-top:1px solid var(--border);
+    box-shadow:0 -2px 10px var(--sh)
+  }
+  .mob-tab{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;padding:8px 4px 10px;
+    background:none;border:none;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;
+    text-transform:uppercase;color:var(--muted);
+    border-top:2px solid transparent;transition:all .15s;position:relative
+  }
+  .mob-tab .ti{font-size:18px;line-height:1}
+  .mob-tab.on{color:var(--gold);border-top-color:var(--gold)}
+  .mob-tab .mbadge{
+    position:absolute;top:6px;right:calc(50% - 16px);
+    background:var(--gold);color:#111;
+    font-size:7px;font-weight:700;font-family:'Karla',sans-serif;
+    border-radius:8px;padding:1px 4px;line-height:1.4;display:none
+  }
+  .mob-tab .mbadge.on{display:block}
 }
 
 /* ═══════════════ GAME OVER ═══════════════ */
@@ -365,6 +394,20 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
       </div>
     </div>
   </div>
+  <!-- MOB TAB BAR -->
+  <div class="mob-tabs">
+    <button class="mob-tab" id="mtab-sc" onclick="mobTab('sc')">
+      <span class="ti">📋</span>Tablica
+    </button>
+    <button class="mob-tab on" id="mtab-dice" onclick="mobTab('dice')">
+      <span class="ti">🎲</span>Kockice
+      <span class="mbadge" id="mbadge-dice"></span>
+    </button>
+    <button class="mob-tab" id="mtab-chat" onclick="mobTab('chat')">
+      <span class="ti">👥</span>Igrači
+      <span class="mbadge on" id="mbadge-chat"></span>
+    </button>
+  </div>
 </div>
 
 <!-- GAME OVER -->
@@ -494,7 +537,7 @@ function initApp(){
     RS=null; myRoomId='';
     if(p.room){
       RS=p.room; myRoomId=p.room.id;
-      if(p.room.state==='playing'){renderGame(p.room);show('gameScreen');}
+      if(p.room.state==='playing'){renderGame(p.room);show('gameScreen');mobInit();}
       else if(p.room.state==='lobby'){renderWait(p.room);show('roomScreen');}
       else if(p.room.state==='finished'){renderGameOver(p.room);show('gameOverScreen');}
       else{show('lobbyScreen');}
@@ -519,7 +562,7 @@ function initApp(){
   socket.on('roomList',renderRoomList);
   socket.on('roomJoined',room=>{myRoomId=room.id;RS=room;renderWait(room);show('roomScreen');});
   socket.on('roomUpdate',room=>{RS=room;if(room.state==='lobby')renderWait(room);else renderGame(room);});
-  socket.on('gameStarted',room=>{myRoomId=room.id;RS=room;visiblePlayers=new Set([socket.id]);renderGame(room);show('gameScreen');});
+  socket.on('gameStarted',room=>{myRoomId=room.id;RS=room;visiblePlayers=new Set([socket.id]);renderGame(room);show('gameScreen');mobInit();});
   socket.on('gameOver',room=>{RS=room;renderGameOver(room);show('gameOverScreen');});
   socket.on('autoScored',({col,rowId,score,playerName})=>{
     toast(`✅ Auto-upis: ${RL[rowId]} → ${score} (${playerName})`,'ok');
@@ -529,6 +572,7 @@ function initApp(){
     },100);
   });
   socket.on('chatMessage',msg=>{
+    mobNotify('chat');
     const el=document.getElementById('chatMsgs');
     const d=document.createElement('div');d.className='cmsg'+(msg.name?'':' sys');
     d.innerHTML=msg.name?`<span class="cn">${esc(msg.name)}</span><span class="ct">${esc(msg.text)}</span>`:`<span class="ct">${esc(msg.text)}</span>`;
@@ -592,6 +636,7 @@ function renderWait(room){
 // ── RENDER GAME ────────────────────────────────────────────────────
 function renderGame(room){
   const me=myTurn(room);
+  if(me && !room.hasRolled) mobNotify('dice');
   const cur=room.players[room.currentPlayerIndex];
   document.getElementById('gRound').textContent=room.round;
   document.getElementById('gCurPlayer').textContent=cur?.name??'?';
@@ -832,6 +877,32 @@ function renderGameOver(room){
 
 // Resize handler to re-render on breakpoint change
 window.addEventListener('resize',()=>{if(RS&&RS.state==='playing')renderGame(RS);});
+
+// ── MOBILE TAB FUNCTIONS ───────────────────────────────────────────
+let _mobTab='dice';
+function mobTab(name){
+  _mobTab=name;
+  const map={sc:'sc-area',dice:'dice-panel',chat:'g-sidebar'};
+  Object.entries(map).forEach(([k,cls])=>{
+    const el=document.querySelector('.'+cls);
+    if(el) el.classList.toggle('mob-active',k===name);
+  });
+  ['sc','dice','chat'].forEach(k=>{
+    const b=document.getElementById('mtab-'+k);
+    if(b) b.classList.toggle('on',k===name);
+  });
+  if(name==='chat'){const b=document.getElementById('mbadge-chat');if(b)b.classList.remove('on');}
+  if(name==='dice'){const b=document.getElementById('mbadge-dice');if(b)b.classList.remove('on');}
+}
+function mobInit(){
+  if(window.innerWidth<=768) mobTab('dice');
+}
+function mobNotify(tab){
+  if(window.innerWidth>768) return;
+  if(_mobTab===tab) return;
+  const b=document.getElementById('mbadge-'+tab);
+  if(b) b.classList.add('on');
+}
 </script>
 
 <!-- Profile Modal -->
