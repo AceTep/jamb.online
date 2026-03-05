@@ -349,12 +349,12 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 <!-- LOGIN -->
 <div id="loginScreen" class="screen active">
   <div class="logo">JAMB</div>
-  <div class="logo-sub">Hrvatska Igra · Online Multiplayer</div>
+  <div class="logo-sub" data-i18n="logo.sub">Hrvatska Igra · Online Multiplayer</div>
   <div class="login-card">
-    <div><label class="flbl">Tvoje ime</label>
-    <input id="nameInput" type="text" placeholder="Upiši ime…" maxlength="20" autocomplete="off">
+    <div><label class="flbl" data-i18n="login.label">Tvoje ime</label>
+    <input id="nameInput" type="text" data-i18n="login.placeholder" data-i18n-attr="placeholder" placeholder="Upiši ime…" maxlength="20" autocomplete="off">
     <div id="nameErr" style="display:none;color:var(--red2);font-size:12px;margin-top:6px;font-family:'JetBrains Mono',monospace"></div></div>
-    <button class="btn-gold" onclick="doLogin()">Igraj →</button>
+    <button class="btn-gold" onclick="doLogin()" data-i18n="login.btn">Igraj →</button>
   </div>
 </div>
 
@@ -366,32 +366,32 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
   </div>
   <div class="lobby-body">
     <div class="rooms-panel">
-      <div class="panel-lbl">Otvorene sobe</div>
-      <div class="room-list" id="roomList"><div class="no-rooms">Nema soba — napravi prvu!</div></div>
+      <div class="panel-lbl" data-i18n="lobby.openRooms">Otvorene sobe</div>
+      <div class="room-list" id="roomList"><div class="no-rooms" data-i18n="lobby.noRooms">Nema soba — napravi prvu!</div></div>
     </div>
     <div class="create-panel">
-      <div class="panel-lbl">Nova soba</div>
-      <div><label class="flbl">Naziv sobe</label>
-      <input id="newRoomName" type="text" placeholder="Moja soba…" maxlength="30"></div>
-      <div><label class="flbl">Maks. igrača</label>
+      <div class="panel-lbl" data-i18n="lobby.newRoom">Nova soba</div>
+      <div><label class="flbl" data-i18n="lobby.roomName">Naziv sobe</label>
+      <input id="newRoomName" type="text" data-i18n="lobby.roomName.placeholder" data-i18n-attr="placeholder" placeholder="Moja soba…" maxlength="30"></div>
+      <div><label class="flbl" data-i18n="lobby.maxPlayers">Maks. igrača</label>
       <select id="maxPlayers">
-        <option value="1">1 igrač (solo)</option>
-        <option value="2">2 igrača</option><option value="3">3 igrača</option>
-        <option value="4" selected>4 igrača</option>
+        <option value="1" data-i18n="lobby.solo">1 igrač (solo)</option>
+        <option value="2">2</option><option value="3">3</option>
+        <option value="4" selected>4</option>
       </select></div>
-      <div><label class="flbl">Broj kockica</label>
+      <div><label class="flbl" data-i18n="lobby.numDice">Broj kockica</label>
       <select id="numDice">
-        <option value="5" selected>🎲 5 kockica (klasično)</option>
-        <option value="6">🎲🎲 6 kockica</option>
+        <option value="5" selected>🎲 5</option>
+        <option value="6">🎲🎲 6</option>
       </select></div>
-      <button class="btn-gold" onclick="doCreateRoom()">Napravi sobu →</button>
+      <button class="btn-gold" onclick="doCreateRoom()" data-i18n="lobby.createBtn">Napravi sobu →</button>
       <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:16px">
-        <label class="flbl">Pridruži se kodom</label>
+        <label class="flbl" data-i18n="lobby.joinCode">Pridruži se kodom</label>
         <div style="display:flex;gap:8px">
-          <input id="joinCodeInput" type="text" placeholder="Npr. VV14LW…" maxlength="6"
+          <input id="joinCodeInput" type="text" data-i18n="lobby.joinCode.placeholder" data-i18n-attr="placeholder" placeholder="Npr. VV14LW…" maxlength="6"
             style="text-transform:uppercase;letter-spacing:3px;font-family:'JetBrains Mono',monospace;font-size:15px;flex:1"
             onkeydown="if(event.key==='Enter')doJoinByCode()">
-          <button class="btn-gold" style="width:auto;padding:0 18px;white-space:nowrap" onclick="doJoinByCode()">Spoji →</button>
+          <button class="btn-gold" style="width:auto;padding:0 18px;white-space:nowrap" onclick="doJoinByCode()" data-i18n="lobby.joinBtn">Spoji →</button>
         </div>
       </div>
     </div>
@@ -417,15 +417,14 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     <div style="height:1px;background:var(--border);margin:4px 0"></div>
     <div class="game-menu-item" onclick="toggleLobbyMenu();toggleTheme();updateMenuThemeLabel()">
       <span id="lobMenuThemeIcon">🌙</span>
-      <span id="lobMenuThemeLabel">Tamna tema</span>
+      <span id="lobMenuThemeLabel" data-i18n="menu.theme.dark">Tamna tema</span>
     </div>
-      <div class="game-menu-item" onclick="toggleMenu();showHelp()">
-        <span>💡</span>
-        <span>Upute</span>
-      </div>
+    <div class="game-menu-item" onclick="toggleLang()">
+      <span id="lobMenuLangLabel" data-i18n="menu.lang">🇬🇧 English</span>
+    </div>
     <div class="game-menu-item" style="margin-top:auto;color:var(--red2)" onclick="toggleLobbyMenu();doLogout()">
       <span>🚪</span>
-      <span>Odjava</span>
+      <span data-i18n="menu.logout">Odjava</span>
     </div>
   </div>
 </div>
@@ -438,18 +437,18 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
   </div>
   <div class="wait-body">
     <div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Kod sobe</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:8px" data-i18n="wait.code">Kod sobe</div>
       <div class="room-code-box" id="roomCode" onclick="copyRoomCode()" title="Klikni za kopiranje" style="cursor:pointer;user-select:none">——</div>
-      <div id="copyHint" style="font-size:11px;color:var(--muted);margin-top:6px;opacity:0;transition:opacity .3s">✓ Kopirano!</div>
+      <div id="copyHint" style="font-size:11px;color:var(--muted);margin-top:6px;opacity:0;transition:opacity .3s" data-i18n="wait.copy">✓ Kopirano!</div>
     </div>
-    <div style="color:var(--muted);font-size:13px">Podijeli kod s prijateljem da se spoji</div>
+    <div style="color:var(--muted);font-size:13px" data-i18n="wait.share">Podijeli kod s prijateljem da se spoji</div>
     <div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:9px">Igrači</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:9px" data-i18n="wait.players">Igrači</div>
       <div class="wait-chips" id="waitChips"></div>
     </div>
-    <div id="startWrap" style="display:none"><button class="btn-start" onclick="doStartGame()">🎲 Pokreni igru →</button></div>
-    <div id="waitHint" style="color:var(--muted);font-size:13px;font-style:italic">Čekanje na hosta…</div>
-    <button class="btn-sm" onclick="doLeaveRoom()" style="margin-top:4px">← Napusti sobu</button>
+    <div id="startWrap" style="display:none"><button class="btn-start" onclick="doStartGame()" data-i18n="wait.start">🎲 Pokreni igru →</button></div>
+    <div id="waitHint" style="color:var(--muted);font-size:13px;font-style:italic" data-i18n="wait.hint">Čekanje na hosta…</div>
+    <button class="btn-sm" onclick="doLeaveRoom()" style="margin-top:4px" data-i18n="wait.leave">← Napusti sobu</button>
   </div>
 </div>
 
@@ -460,7 +459,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     <button class="ico-btn" id="menuBtn" onclick="toggleMenu()" title="Izbornik">☰</button>
   </div>
   <div class="info-bar" id="infoBar">
-    <span id="infoBarMsg">💡 Baci kockice, zatim klikni na polje u tablici za upisati rezultat</span>
+    <span id="infoBarMsg" data-i18n="game.infobar">💡 Baci kockice, zatim klikni na polje u tablici za upisati rezultat</span>
     <button class="info-bar-x" onclick="document.getElementById('infoBar').classList.remove('on')">✕</button>
   </div>
   <div class="kontra-bar" id="kontraBar">
@@ -519,24 +518,28 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
   <div id="gameMenu" class="game-menu-overlay" onclick="toggleMenu()">
     <div class="game-menu-panel" onclick="event.stopPropagation()">
       <div class="game-menu-hdr">
-        <span style="font-family:'Bebas Neue',cursive;font-size:18px;color:var(--gold);letter-spacing:3px">IZBORNIK</span>
+        <span style="font-family:'Bebas Neue',cursive;font-size:18px;color:var(--gold);letter-spacing:3px" data-i18n="menu.title">IZBORNIK</span>
         <button onclick="toggleMenu()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">✕</button>
       </div>
       <div class="game-menu-item" onclick="toggleTheme();updateMenuThemeLabel()">
         <span id="menuThemeIcon">🌙</span>
-        <span id="menuThemeLabel">Tamna tema</span>
+        <span id="menuThemeLabel" data-i18n="menu.theme.dark">Tamna tema</span>
       </div>
       <div class="game-menu-item" onclick="toggleMute()">
         <span id="menuMuteIcon">🔊</span>
-        <span id="menuMuteLabel">Zvuk uključen</span>
+        <span id="menuMuteLabel" data-i18n="menu.sound.on">Zvuk uključen</span>
+      </div>
+      <div class="game-menu-item" onclick="toggleLang()">
+        <span>🌐</span>
+        <span id="menuLangLabel" data-i18n="menu.lang">🇬🇧 English</span>
       </div>
       <div class="game-menu-item" onclick="toggleMenu();showHelp()">
         <span>💡</span>
-        <span>Upute</span>
+        <span data-i18n="menu.help">Upute</span>
       </div>
       <div class="game-menu-item" style="margin-top:auto;color:var(--red2)" onclick="toggleMenu();doLeaveRoom()">
         <span>🚪</span>
-        <span>Napusti igru</span>
+        <span data-i18n="menu.leave">Napusti igru</span>
       </div>
     </div>
   </div>
@@ -557,17 +560,17 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 
 <!-- GAME OVER -->
 <div id="gameOverScreen" class="screen">
-  <div class="go-title">KRAJ IGRE</div>
-  <div class="go-sub">Konačni rezultati</div>
+  <div class="go-title" data-i18n="go.title">KRAJ IGRE</div>
+  <div class="go-sub" data-i18n="go.sub">Konačni rezultati</div>
   <div class="res-card">
-    <table><thead><tr><th>#</th><th>Igrač</th><th>Bodovi</th><th></th></tr></thead>
+    <table><thead><tr><th>#</th><th data-i18n="game.players">Igrač</th><th>Bodovi</th><th></th></tr></thead>
     <tbody id="goResults"></tbody></table>
   </div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
-    <button id="rematchBtn" class="btn-start" style="display:none;padding:13px 36px" onclick="doRematch()">🔄 Igraj ponovo</button>
-    <button class="btn-gold" style="width:auto;padding:13px 36px" onclick="goLobby()">← Natrag na lobby</button>
+    <button id="rematchBtn" class="btn-start" style="display:none;padding:13px 36px" onclick="doRematch()" data-i18n="go.rematch">🔄 Igraj ponovo</button>
+    <button class="btn-gold" style="width:auto;padding:13px 36px" onclick="goLobby()" data-i18n="go.lobby">← Natrag na lobby</button>
   </div>
-  <div id="rematchHint" style="font-size:12px;color:var(--muted);display:none">Čekanje da host pokrene novu igru…</div>
+  <div id="rematchHint" style="font-size:12px;color:var(--muted);display:none" data-i18n="go.rematchHint">Čekanje da host pokrene novu igru…</div>
 </div>
 <div id="toast"><span id="toast-msg"></span><button id="toast-x" onclick="dismissToast()">✕</button></div>
 
@@ -579,6 +582,7 @@ let dark=localStorage.getItem('jambTheme')==='dark';
 function applyTheme(){document.documentElement.setAttribute('data-theme',dark?'dark':'');updateMenuThemeLabel();}
 function toggleTheme(){dark=!dark;localStorage.setItem('jambTheme',dark?'dark':'light');applyTheme();}
 applyTheme();
+document.addEventListener('DOMContentLoaded',()=>applyLang());
 function toggleMenu(){const m=document.getElementById('gameMenu');m.classList.toggle('open');}
 function toggleLobbyMenu(){const m=document.getElementById('lobbyMenu');m.classList.toggle('open');}
 function setLobbyMenuProfile(name){
@@ -595,16 +599,179 @@ function updateMenuThemeLabel(){
   if(el2){el2.textContent=dark?'Svijetla tema':'Tamna tema';ic2.textContent=dark?'☀️':'🌙';}
 }
 
+// ── I18N ───────────────────────────────────────────────────────────
+let _lang = localStorage.getItem('jambLang') || 'hr';
+const I18N = {
+  hr: {
+    // Login
+    'logo.sub': 'Hrvatska Igra · Online Multiplayer',
+    'login.label': 'Tvoje ime',
+    'login.placeholder': 'Upiši ime…',
+    'login.btn': 'Igraj →',
+    // Lobby
+    'lobby.openRooms': 'Otvorene sobe',
+    'lobby.noRooms': 'Nema soba — napravi prvu!',
+    'lobby.newRoom': 'Nova soba',
+    'lobby.roomName': 'Naziv sobe',
+    'lobby.roomName.placeholder': 'Moja soba…',
+    'lobby.maxPlayers': 'Maks. igrača',
+    'lobby.numDice': 'Broj kockica',
+    'lobby.createBtn': 'Napravi sobu →',
+    'lobby.joinCode': 'Pridruži se kodom',
+    'lobby.joinCode.placeholder': 'Npr. VV14LW…',
+    'lobby.joinBtn': 'Spoji →',
+    'lobby.solo': '1 igrač (solo)',
+    // Menu
+    'menu.title': 'IZBORNIK',
+    'menu.profile': 'Klikni za profil',
+    'menu.theme.dark': 'Tamna tema',
+    'menu.theme.light': 'Svijetla tema',
+    'menu.sound.on': 'Zvuk uključen',
+    'menu.sound.off': 'Zvuk isključen',
+    'menu.help': 'Upute',
+    'menu.leave': 'Napusti igru',
+    'menu.logout': 'Odjava',
+    'menu.lang': '🇬🇧 English',
+    // Wait room
+    'wait.code': 'Kod sobe',
+    'wait.share': 'Podijeli kod s prijateljem da se spoji',
+    'wait.players': 'Igrači',
+    'wait.start': '🎲 Pokreni igru →',
+    'wait.hint': 'Čekanje na hosta…',
+    'wait.leave': '← Napusti sobu',
+    'wait.copy': '✓ Kopirano!',
+    // Game
+    'game.round': 'Runda',
+    'game.roll': '🎲 Baci kockice',
+    'game.reroll': '🎲 Baci ponovo',
+    'game.score': '✔ Upiši u tablicu',
+    'game.hint.start': 'Baci kockice za početak',
+    'game.hint.hold': 'Klikni kockice da ih zadržiš, pa baci ponovo',
+    'game.hint.score': 'Klikni polje u tablici za upisati rezultat',
+    'game.players': 'Igrači',
+    'game.chat': 'Chat',
+    'game.chat.placeholder': 'Poruka…',
+    'game.ann.sub': 'Automatski se upisuje',
+    'game.infobar': '💡 Baci kockice, zatim klikni na polje u tablici za upisati rezultat',
+    'game.kontra': 'Najava aktivna',
+    'game.kontra.by': 'najavio/la',
+    // Game over
+    'go.title': 'KRAJ IGRE',
+    'go.sub': 'Konačni rezultati',
+    'go.rematch': '🔄 Igraj ponovo',
+    'go.lobby': '← Natrag na lobby',
+    'go.rematchHint': 'Čekanje da host pokrene novu igru…',
+    // Scorecard rows
+    'row.r1': 'Jedinice (1)', 'row.r2': 'Dvojke (2)', 'row.r3': 'Trojke (3)',
+    'row.r4': 'Četvorke (4)', 'row.r5': 'Petice (5)', 'row.r6': 'Šestice (6)',
+    'row.max': 'Maksimum', 'row.min': 'Minimum', 'row.tris': 'Tris (+10)',
+    'row.skala_mala': 'Mala skala (35)', 'row.skala_velika': 'Velika skala (42)',
+    'row.full': 'Full (+30)', 'row.poker': 'Poker (+40)', 'row.jamb': 'JAMB (+50)',
+    // Toasts
+    'toast.nameRequired': 'Upiši ime!',
+    'toast.codeRequired': 'Upiši kod sobe!',
+    'toast.copied': '👋 Dobrodošao natrag',
+    'toast.newGame': '🔄 Nova igra počinje!',
+  },
+  en: {
+    'logo.sub': 'Croatian Dice Game · Online Multiplayer',
+    'login.label': 'Your name',
+    'login.placeholder': 'Enter name…',
+    'login.btn': 'Play →',
+    'lobby.openRooms': 'Open rooms',
+    'lobby.noRooms': 'No rooms — create the first one!',
+    'lobby.newRoom': 'New room',
+    'lobby.roomName': 'Room name',
+    'lobby.roomName.placeholder': 'My room…',
+    'lobby.maxPlayers': 'Max players',
+    'lobby.numDice': 'Number of dice',
+    'lobby.createBtn': 'Create room →',
+    'lobby.joinCode': 'Join by code',
+    'lobby.joinCode.placeholder': 'E.g. VV14LW…',
+    'lobby.joinBtn': 'Join →',
+    'lobby.solo': '1 player (solo)',
+    'menu.title': 'MENU',
+    'menu.profile': 'Click for profile',
+    'menu.theme.dark': 'Dark theme',
+    'menu.theme.light': 'Light theme',
+    'menu.sound.on': 'Sound on',
+    'menu.sound.off': 'Sound off',
+    'menu.help': 'How to play',
+    'menu.leave': 'Leave game',
+    'menu.logout': 'Log out',
+    'menu.lang': '🇭🇷 Hrvatski',
+    'wait.code': 'Room code',
+    'wait.share': 'Share the code with a friend to join',
+    'wait.players': 'Players',
+    'wait.start': '🎲 Start game →',
+    'wait.hint': 'Waiting for host…',
+    'wait.leave': '← Leave room',
+    'wait.copy': '✓ Copied!',
+    'game.round': 'Round',
+    'game.roll': '🎲 Roll dice',
+    'game.reroll': '🎲 Roll again',
+    'game.score': '✔ Write to scorecard',
+    'game.hint.start': 'Roll the dice to start',
+    'game.hint.hold': 'Click dice to hold them, then roll again',
+    'game.hint.score': 'Click a cell in the table to score',
+    'game.players': 'Players',
+    'game.chat': 'Chat',
+    'game.chat.placeholder': 'Message…',
+    'game.ann.sub': 'Will be auto-scored',
+    'game.infobar': '💡 Roll the dice, then click a cell in the table to score',
+    'game.kontra': 'Announcement active',
+    'game.kontra.by': 'announced by',
+    'go.title': 'GAME OVER',
+    'go.sub': 'Final results',
+    'go.rematch': '🔄 Play again',
+    'go.lobby': '← Back to lobby',
+    'go.rematchHint': 'Waiting for host to start a new game…',
+    'row.r1': 'Ones (1)', 'row.r2': 'Twos (2)', 'row.r3': 'Threes (3)',
+    'row.r4': 'Fours (4)', 'row.r5': 'Fives (5)', 'row.r6': 'Sixes (6)',
+    'row.max': 'Maximum', 'row.min': 'Minimum', 'row.tris': 'Three of a kind (+10)',
+    'row.skala_mala': 'Small straight (35)', 'row.skala_velika': 'Large straight (42)',
+    'row.full': 'Full house (+30)', 'row.poker': 'Four of a kind (+40)', 'row.jamb': 'JAMB (+50)',
+    'toast.nameRequired': 'Enter a name!',
+    'toast.codeRequired': 'Enter a room code!',
+    'toast.copied': '👋 Welcome back',
+    'toast.newGame': '🔄 New game starting!',
+  }
+};
+function t(key){ return (I18N[_lang]||I18N.hr)[key] || (I18N.hr)[key] || key; }
+function toggleLang(){
+  _lang = _lang==='hr'?'en':'hr';
+  localStorage.setItem('jambLang',_lang);
+  applyLang();
+}
+function applyLang(){
+  // Update menu lang button
+  const lb=document.getElementById('menuLangLabel');const llb=document.getElementById('lobMenuLangLabel');
+  if(lb) lb.textContent=t('menu.lang');
+  if(llb) llb.textContent=t('menu.lang');
+  // Static HTML elements with data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key=el.getAttribute('data-i18n');
+    const attr=el.getAttribute('data-i18n-attr');
+    if(attr) el.setAttribute(attr,t(key));
+    else el.textContent=t(key);
+  });
+  // ROWS labels
+  ROWS.forEach(r=>{ r.label=t('row.'+r.id); RL[r.id]=r.label; });
+  // Re-render if in game
+  if(RS && RS.state==='playing') renderGame(RS);
+}
+// ─────────────────────────────────────────────────────────────────
+
 // ── CONSTANTS ──────────────────────────────────────────────────────
 const PC=['#c04020','#1a4a8a','#2a7a3a','#7a3a9a','#b8860b','#1a7a8a'];
 const ROWS=[
-  {id:'r1',label:'Jedinice (1)',s:'upper'},{id:'r2',label:'Dvojke (2)',s:'upper'},
-  {id:'r3',label:'Trojke (3)',s:'upper'},{id:'r4',label:'Četvorke (4)',s:'upper'},
-  {id:'r5',label:'Petice (5)',s:'upper'},{id:'r6',label:'Šestice (6)',s:'upper'},
-  {id:'max',label:'Maksimum',s:'lower'},{id:'min',label:'Minimum',s:'lower'},
-  {id:'tris',label:'Tris (+10)',s:'middle'},{id:'skala_mala',label:'Mala skala (35)',s:'middle'},
-  {id:'skala_velika',label:'Velika skala (42)',s:'middle'},{id:'full',label:'Full (+30)',s:'middle'},
-  {id:'poker',label:'Poker (+40)',s:'middle'},{id:'jamb',label:'JAMB (+50)',s:'middle'},
+  {id:'r1',label:t('row.r1'),s:'upper'},{id:'r2',label:t('row.r2'),s:'upper'},
+  {id:'r3',label:t('row.r3'),s:'upper'},{id:'r4',label:t('row.r4'),s:'upper'},
+  {id:'r5',label:t('row.r5'),s:'upper'},{id:'r6',label:t('row.r6'),s:'upper'},
+  {id:'max',label:t('row.max'),s:'lower'},{id:'min',label:t('row.min'),s:'lower'},
+  {id:'tris',label:t('row.tris'),s:'middle'},{id:'skala_mala',label:t('row.skala_mala'),s:'middle'},
+  {id:'skala_velika',label:t('row.skala_velika'),s:'middle'},{id:'full',label:t('row.full'),s:'middle'},
+  {id:'poker',label:t('row.poker'),s:'middle'},{id:'jamb',label:t('row.jamb'),s:'middle'},
 ];
 const RI=ROWS.map(r=>r.id);
 const RL={};ROWS.forEach(r=>RL[r.id]=r.label);
@@ -711,7 +878,7 @@ function initApp(){
       show('lobbyScreen');
     }
     socket.emit('getRooms');
-    toast('👋 Dobrodošao natrag, '+p.name+'!','ok');
+    toast('👋 '+t('toast.copied')+', '+p.name+'!','ok');
   });
 
   // Sesija istekla (1h neaktivnosti)
@@ -735,7 +902,7 @@ function initApp(){
     }
   });
   socket.on('gameOver',room=>{RS=room;sndFanfara();renderGameOver(room);show('gameOverScreen');});
-  socket.on('rematchStarted',room=>{RS=room;myRoomId=room.id;renderGame(room);show('gameScreen');mobInit();toast('🔄 Nova igra počinje!','ok');});
+  socket.on('rematchStarted',room=>{RS=room;myRoomId=room.id;renderGame(room);show('gameScreen');mobInit();toast(t('toast.newGame'),'ok');});
 
   socket.on('autoScored',({col,rowId,score,playerName})=>{
     toast(`✅ Auto-upis: ${RL[rowId]} → ${score} (${playerName})`,'ok');
@@ -773,7 +940,7 @@ function initApp(){
 // ── ACTIONS ────────────────────────────────────────────────────────
 function doLogin(){
   const n=document.getElementById('nameInput').value.trim();
-  if(!n)return toast('Upiši ime!','err');
+  if(!n)return toast(t('toast.nameRequired'),'err');
   document.getElementById('nameErr').style.display='none';
   socket.emit('setName',n);
 }
@@ -803,7 +970,7 @@ function renderProfileModal(data){
 }
 function doCreateRoom(){const name=document.getElementById('newRoomName').value.trim();const max=parseInt(document.getElementById('maxPlayers').value);const nd=parseInt(document.getElementById('numDice').value);socket.emit('createRoom',{roomName:name,maxPlayers:max,numDice:nd});}
 function doJoinRoom(id){socket.emit('joinRoom',id);}
-function doJoinByCode(){const code=document.getElementById('joinCodeInput').value.trim().toUpperCase();if(!code)return toast('Upiši kod sobe!','err');socket.emit('joinRoom',code);document.getElementById('joinCodeInput').value='';}
+function doJoinByCode(){const code=document.getElementById('joinCodeInput').value.trim().toUpperCase();if(!code)return toast(t('toast.codeRequired'),'err');socket.emit('joinRoom',code);document.getElementById('joinCodeInput').value='';}
 function doStartGame(){socket.emit('startGame',myRoomId);}
 function copyRoomCode(){const code=document.getElementById('roomCode').textContent;navigator.clipboard.writeText(code).then(()=>{const h=document.getElementById('copyHint');h.style.opacity='1';clearTimeout(h._t);h._t=setTimeout(()=>h.style.opacity='0',2000);});}
 function doLeaveRoom(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');if(myToken)socket.emit('ping',myToken);}
@@ -997,7 +1164,7 @@ function doRematch(){if(!myRoomId)return;socket.emit('rematch',myRoomId);}
 // ── RENDER ROOM LIST ───────────────────────────────────────────────
 function renderRoomList(rooms){
   const el=document.getElementById('roomList');
-  if(!rooms.length){el.innerHTML='<div class="no-rooms">Nema soba — napravi prvu!</div>';return;}
+  if(!rooms.length){el.innerHTML=`<div class="no-rooms">${t('lobby.noRooms')}</div>`;return;}
   el.innerHTML=rooms.map(r=>{
     const isFull=r.players>=r.maxPlayers,isPlay=r.state!=='lobby';
     const cls=isFull?'full':isPlay?'ingame':'';
@@ -1032,8 +1199,8 @@ function renderGameExceptDice(room){
   document.getElementById('rdotTxt').textContent=`${room.rollsLeft}×`;
   const rb=document.getElementById('rollBtn');
   if(!me){rb.disabled=true;rb.textContent=`⏳ ${cur?.name??'...'}...`;}
-  else if(room.rollsLeft===0){rb.disabled=true;rb.textContent='✔ Upiši u tablicu';}
-  else{rb.disabled=false;rb.textContent=room.hasRolled?`🎲 Baci ponovo (${room.rollsLeft}×)`:'🎲 Baci kockice';}
+  else if(room.rollsLeft===0){rb.disabled=true;rb.textContent=t('game.score');}
+  else{rb.disabled=false;rb.textContent=room.hasRolled?`${t('game.reroll')} (${room.rollsLeft}×)`:t('game.roll');}
   renderScorecards(room);
   renderPlayers(room);
 }
@@ -1055,15 +1222,13 @@ function renderGame(room){
   if(ann){kb.classList.add('on');document.getElementById('kontraRowTxt').textContent=RL[ann.rowId]||ann.rowId;document.getElementById('kontraByTxt').textContent=`(${ann.playerName})`;}
   else kb.classList.remove('on');
 
-  // Dice (6 dice — during rolling: click=hold; after rolling: click=toggle active/inactive)
+  // Dice
   const actDice=room.activeDice||Array(room.numDice||5).fill(true);
   const scoringPhase=me&&room.hasRolled&&room.rollsLeft===0;
   document.getElementById('diceRow').innerHTML=room.dice.map((v,i)=>{
     const held=room.heldDice[i];
     const active=actDice[i];
     const dim=!me;
-    // During rolling: click = hold/unhold
-    // After last roll: click = toggle active (for scoring)
     const canHold=me&&room.hasRolled&&room.rollsLeft>0;
     const canToggle=scoringPhase;
     let lbl='';
@@ -1078,19 +1243,19 @@ function renderGame(room){
   // Roll btn
   const rb=document.getElementById('rollBtn');
   if(!me){rb.disabled=true;rb.textContent=`⏳ ${cur?.name??'...'}...`;}
-  else if(room.rollsLeft===0){rb.disabled=true;rb.textContent='✔ Upiši u tablicu';}
-  else{rb.disabled=false;rb.textContent=room.hasRolled?`🎲 Baci ponovo (${room.rollsLeft}×)`:'🎲 Baci kockice';}
+  else if(room.rollsLeft===0){rb.disabled=true;rb.textContent=t('game.score');}
+  else{rb.disabled=false;rb.textContent=room.hasRolled?`${t('game.reroll')} (${room.rollsLeft}×)`:t('game.roll');}
 
   // Hint
   let hint='';
   const mustKontraMe = RS && room.activeAnnouncement && room.activeAnnouncement.playerId !== socket.id;
   const myScorecard = room.players.find(p=>p.id===socket.id)?.scorecard;
   const kontraAlreadyDone = mustKontraMe && myScorecard && myScorecard['kon'][room.activeAnnouncement.rowId] !== undefined;
-  if(!me)hint=`Čekanje na ${cur?.name??''}…`;
-  else if(mustKontraMe && !kontraAlreadyDone)hint=`⚡ Moraš upisati KONTRU: ${RL[room.activeAnnouncement.rowId]}`;
-  else if(!room.hasRolled){if(room.announcement)hint=`📢 Najavljen: ${RL[room.announcement.rowId]} — baci!`;else hint='Možeš najaviti polje (📢) ili odmah baci';}
-  else if(room.rollsLeft===0){const aCount=(room.activeDice||[true,true,true,true,true,true]).filter(Boolean).length;const numDice=room.numDice||5;const maxTxt=numDice>5?' (max 5)':'';if(room.announcement)hint=`📢 Upiši najavu: ${RL[room.announcement.rowId]} · ${aCount} kockica odabrano${maxTxt}`;else hint=`Odaberi kockice za upis · ${aCount}/5 odabrano${maxTxt} · klikni polje`;}
-  else hint='Klikni kockice da ih zadržiš, pa baci ponovo';
+  if(!me)hint=`⏳ ${cur?.name??''}…`;
+  else if(mustKontraMe && !kontraAlreadyDone)hint=`⚡ ${_lang==='en'?'Must score KONTRA':'Moraš upisati KONTRU'}: ${RL[room.activeAnnouncement.rowId]}`;
+  else if(!room.hasRolled){if(room.announcement)hint=`📢 ${_lang==='en'?'Announced':'Najavljen'}: ${RL[room.announcement.rowId]} — ${_lang==='en'?'roll!':'baci!'}`;else hint=t('game.hint.start');}
+  else if(room.rollsLeft===0){const aCount=(room.activeDice||[true,true,true,true,true,true]).filter(Boolean).length;const numDice=room.numDice||5;const maxTxt=numDice>5?' (max 5)':'';if(room.announcement)hint=`📢 ${_lang==='en'?'Score announcement':'Upiši najavu'}: ${RL[room.announcement.rowId]} · ${aCount} ${_lang==='en'?'dice selected':'kockica odabrano'}${maxTxt}`;else hint=t('game.hint.score');}
+  else hint=t('game.hint.hold');
   document.getElementById('diceHint').textContent=hint;
 
   // Ann box
