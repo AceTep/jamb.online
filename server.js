@@ -192,6 +192,7 @@ function pruneInactiveRooms() {
 setInterval(pruneInactiveRooms, 60 * 1000);
 
 const rooms = {}, players = {};
+const roomTimers = new Map(); // rid → setTimeout handle — NE sprema se na room objekt!
 
 function getRoomList() {
   return Object.values(rooms).map(r=>({id:r.id,name:r.name,players:r.players.length,maxPlayers:r.maxPlayers,numDice:r.numDice||5,state:r.state,playerNames:r.players.map(p=>p.name)}));
@@ -254,9 +255,9 @@ io.on('connection',(socket)=>{
     socket.emit('sessionResumed', { name: s.name, token: sessionToken, profileToken: s.profileToken, room: rejoinedRoom });
     if (rejoinedRoom) {
       // Cancela timer za gašenje sobe ako se owner vratio
-      if (rejoinedRoom._ownerDisconnectTimer) {
-        clearTimeout(rejoinedRoom._ownerDisconnectTimer);
-        delete rejoinedRoom._ownerDisconnectTimer;
+      if (roomTimers.has(rejoinedRoom.id)) {
+        clearTimeout(roomTimers.get(rejoinedRoom.id));
+        roomTimers.delete(rejoinedRoom.id);
       }
       io.to(rejoinedRoom.id).emit('roomUpdate', rejoinedRoom);
     }
@@ -288,9 +289,9 @@ io.on('connection',(socket)=>{
 
     socket.emit('sessionResumed', { name: profile.name, token: sessionToken, profileToken, room: rejoinedRoom });
     if (rejoinedRoom) {
-      if (rejoinedRoom._ownerDisconnectTimer) {
-        clearTimeout(rejoinedRoom._ownerDisconnectTimer);
-        delete rejoinedRoom._ownerDisconnectTimer;
+      if (roomTimers.has(rejoinedRoom.id)) {
+        clearTimeout(roomTimers.get(rejoinedRoom.id));
+        roomTimers.delete(rejoinedRoom.id);
       }
       io.to(rejoinedRoom.id).emit('roomUpdate', rejoinedRoom);
     }
@@ -480,22 +481,30 @@ io.on('connection',(socket)=>{
       for (const room of Object.values(rooms)) {
         if (room.players.find(rp => rp.id === socket.id)) {
           if (room.maxPlayers === 1) {
-            handleLeave(socket, room.id); // solo — obriši sobu
+            // Solo — daj 30s za reconnect prije brisanja
+            const rid = room.id;
+            roomTimers.set(rid, setTimeout(() => {
+              if (!rooms[rid]) return;
+              delete rooms[rid];
+              saveRooms();
+              io.emit('roomList', getRoomList());
+            }, 30 * 1000));
           } else {
             io.to(room.id).emit('playerOffline', { socketId: socket.id, name: p.name });
             // Ako je owner u lobbyu — pokreni 20s timer za gašenje sobe
             if (room.state === 'lobby' && room.hostToken === p.profileToken) {
               const rid = room.id;
-              room._ownerDisconnectTimer = setTimeout(() => {
+              roomTimers.set(rid, setTimeout(() => {
                 const r = rooms[rid];
                 if (!r) return;
                 console.log(`🗑️  Soba ${rid} zatvorena jer se owner nije vratio`);
                 io.to(rid).emit('roomClosed', { reason: `Host se odspojio — soba zatvorena.` });
                 io.socketsLeave(rid);
                 delete rooms[rid];
+                roomTimers.delete(rid);
                 saveRooms();
                 io.emit('roomList', getRoomList());
-              }, 20 * 1000);
+              }, 20 * 1000));
             }
           }
           break;
