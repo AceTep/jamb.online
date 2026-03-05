@@ -234,7 +234,7 @@ io.on('connection',(socket)=>{
   socket.on('ping', (token) => { if(token) touchSession(token); });
   socket.on('getRooms',()=>socket.emit('roomList',getRoomList()));
 
-  socket.on('createRoom',({roomName,maxPlayers})=>{
+  socket.on('createRoom',({roomName,maxPlayers,numDice})=>{
     const p=players[socket.id]; if(!p) return;
     const rid=Math.random().toString(36).slice(2,8).toUpperCase();
     rooms[rid]=createRoom(rid,roomName||`${p.name}'s soba`,socket.id,p.name,maxPlayers||4,numDice||5);
