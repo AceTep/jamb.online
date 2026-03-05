@@ -108,6 +108,10 @@ select:focus{border-color:var(--gold)} select option{background:var(--s1)}
 .rdot-txt{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);flex-shrink:0}
 
 /* Kontra bar */
+.info-bar{background:rgba(184,134,11,.08);border-bottom:2px solid rgba(184,134,11,.2);padding:7px 14px;display:none;align-items:center;justify-content:space-between;gap:8px;font-size:12px;flex-shrink:0;color:var(--gold)}
+.info-bar.on{display:flex}
+.info-bar-x{background:none;border:none;color:var(--gold);cursor:pointer;font-size:16px;opacity:.7;padding:0 2px;line-height:1;flex-shrink:0}
+.info-bar-x:hover{opacity:1}
 .kontra-bar{background:rgba(192,90,16,.08);border-bottom:2px solid rgba(192,90,16,.25);padding:6px 14px;display:none;align-items:center;gap:8px;font-size:12px;flex-shrink:0}
 .kontra-bar.on{display:flex}
 .kontra-bar strong{color:var(--orange2);font-weight:700}
@@ -268,8 +272,10 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
 .res-card tr.winner td{color:var(--gold);font-weight:700;background:rgba(184,134,11,.05)}
 
 /* ═══════════════ TOAST ═══════════════ */
-#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--s1);border:1.5px solid var(--border);border-radius:9px;padding:10px 18px;font-size:13px;z-index:999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);max-width:90vw;text-align:center;box-shadow:0 6px 24px var(--sh);pointer-events:none}
-#toast.show{transform:translateX(-50%) translateY(0)}
+#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--s1);border:1.5px solid var(--border);border-radius:9px;padding:10px 36px 10px 18px;font-size:13px;z-index:999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);max-width:90vw;text-align:center;box-shadow:0 6px 24px var(--sh);pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0);pointer-events:auto}
+#toast-x{position:absolute;top:50%;right:10px;transform:translateY(-50%);background:none;border:none;color:inherit;font-size:15px;cursor:pointer;opacity:.6;line-height:1;padding:2px 4px}
+#toast-x:hover{opacity:1}
 #toast.ok{border-color:var(--green2);color:var(--green2)}
 #toast.err{border-color:var(--red2);color:var(--red2)}
 #toast.info{border-color:var(--purple2);color:var(--purple2)}
@@ -358,6 +364,10 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     <button class="ico-btn" id="themeBtn3" onclick="toggleTheme()">🌙</button>
     <button class="btn-sm" onclick="doLeaveRoom()">Napusti</button>
   </div>
+  <div class="info-bar" id="infoBar">
+    <span id="infoBarMsg">💡 Baci kockice, zatim klikni na polje u tablici za upisati rezultat</span>
+    <button class="info-bar-x" onclick="document.getElementById('infoBar').classList.remove('on')">✕</button>
+  </div>
   <div class="kontra-bar" id="kontraBar">
     ⚡ Kontra aktivna: <strong id="kontraRowTxt"></strong>
     <span id="kontraByTxt"></span>
@@ -420,7 +430,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
   </div>
   <button class="btn-gold" style="width:auto;padding:13px 36px" onclick="goLobby()">← Natrag na lobby</button>
 </div>
-<div id="toast"></div>
+<div id="toast"><span id="toast-msg"></span><button id="toast-x" onclick="dismissToast()">✕</button></div>
 
 <script>
 (function(){const s=document.createElement('script');s.src='/socket.io/socket.io.js';s.onload=initApp;document.head.appendChild(s);})();
@@ -491,7 +501,8 @@ function grandTotal(sc){return COLS.reduce((a,c)=>a+colTotal(sc[c]),0);}
 // ── UTILS ──────────────────────────────────────────────────────────
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show '+type;clearTimeout(el._t);el._t=setTimeout(()=>el.className='toast',2800);}
+function toast(msg,type=''){const el=document.getElementById('toast');document.getElementById('toast-msg').textContent=msg;el.className='toast show '+type;clearTimeout(el._t);el._t=setTimeout(()=>dismissToast(),4000);}
+function dismissToast(){const el=document.getElementById('toast');clearTimeout(el._t);el.className='toast';}
 function myTurn(room){return room.players[room.currentPlayerIndex]?.id===socket.id;}
 
 const DOT_POS={1:[[23,23]],2:[[11,11],[35,35]],3:[[11,11],[23,23],[35,35]],4:[[11,11],[35,11],[11,35],[35,35]],5:[[11,11],[35,11],[23,23],[11,35],[35,35]],6:[[11,11],[35,11],[11,23],[35,23],[11,35],[35,35]]};
@@ -562,7 +573,13 @@ function initApp(){
   socket.on('roomList',renderRoomList);
   socket.on('roomJoined',room=>{myRoomId=room.id;RS=room;renderWait(room);show('roomScreen');});
   socket.on('roomUpdate',room=>{RS=room;if(room.state==='lobby')renderWait(room);else renderGame(room);});
-  socket.on('gameStarted',room=>{myRoomId=room.id;RS=room;visiblePlayers=new Set([socket.id]);renderGame(room);show('gameScreen');mobInit();});
+  socket.on('gameStarted',room=>{myRoomId=room.id;RS=room;visiblePlayers=new Set([socket.id]);renderGame(room);show('gameScreen');mobInit();
+    if(!localStorage.getItem('jambHintSeen')){
+      document.getElementById('infoBar').classList.add('on');
+      localStorage.setItem('jambHintSeen','1');
+      setTimeout(()=>document.getElementById('infoBar').classList.remove('on'), 6000);
+    }
+  });
   socket.on('gameOver',room=>{RS=room;renderGameOver(room);show('gameOverScreen');});
   socket.on('autoScored',({col,rowId,score,playerName})=>{
     toast(`✅ Auto-upis: ${RL[rowId]} → ${score} (${playerName})`,'ok');
