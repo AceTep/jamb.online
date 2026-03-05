@@ -4,12 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>JAMB Online</title>
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
-<meta name="theme-color" content="#b8860b">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="JAMB">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Karla:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -386,8 +380,8 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
       </select></div>
       <div><label class="flbl">Broj kockica</label>
       <select id="numDice">
-        <option value="5" selected>🎲 5 kockica (klasično)</option>
-        <option value="6">🎲🎲 6 kockica</option>
+        <option value="5" selected> 5 kockica (klasično)</option>
+        <option value="6"> 6 kockica</option>
       </select></div>
       <button class="btn-gold" onclick="doCreateRoom()">Napravi sobu →</button>
       <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:16px">
@@ -429,7 +423,6 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
         <span>Upute</span>
       </div>
     <div class="game-menu-item" style="margin-top:auto;color:var(--red2)" onclick="toggleLobbyMenu();doLogout()">
-      <span>🚪</span>
       <span>Odjava</span>
     </div>
   </div>
@@ -452,7 +445,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
       <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:9px">Igrači</div>
       <div class="wait-chips" id="waitChips"></div>
     </div>
-    <div id="startWrap" style="display:none"><button class="btn-start" onclick="doStartGame()">🎲 Pokreni igru →</button></div>
+    <div id="startWrap" style="display:none"><button class="btn-start" onclick="doStartGame()"> Pokreni igru →</button></div>
     <div id="waitHint" style="color:var(--muted);font-size:13px;font-style:italic">Čekanje na hosta…</div>
     <button class="btn-sm" onclick="doLeaveRoom()" style="margin-top:4px">← Napusti sobu</button>
   </div>
@@ -531,12 +524,15 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
         <span id="menuThemeIcon">🌙</span>
         <span id="menuThemeLabel">Tamna tema</span>
       </div>
+      <div class="game-menu-item" onclick="toggleMute()">
+        <span id="menuMuteIcon">🔊</span>
+        <span id="menuMuteLabel">Zvuk uključen</span>
+      </div>
       <div class="game-menu-item" onclick="toggleMenu();showHelp()">
         <span>💡</span>
         <span>Upute</span>
       </div>
       <div class="game-menu-item" style="margin-top:auto;color:var(--red2)" onclick="toggleMenu();doLeaveRoom()">
-        <span>🚪</span>
         <span>Napusti igru</span>
       </div>
     </div>
@@ -795,9 +791,23 @@ function doStartGame(){socket.emit('startGame',myRoomId);}
 function copyRoomCode(){const code=document.getElementById('roomCode').textContent;navigator.clipboard.writeText(code).then(()=>{const h=document.getElementById('copyHint');h.style.opacity='1';clearTimeout(h._t);h._t=setTimeout(()=>h.style.opacity='0',2000);});}
 function doLeaveRoom(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');if(myToken)socket.emit('ping',myToken);}
 // ── ZVUK (Web Audio API) ─────────────────────────────────────────
+let _muted = localStorage.getItem('jambMuted')==='1';
+function toggleMute(){
+  _muted=!_muted;
+  localStorage.setItem('jambMuted',_muted?'1':'0');
+  document.getElementById('menuMuteIcon').textContent=_muted?'🔇':'🔊';
+  document.getElementById('menuMuteLabel').textContent=_muted?'Zvuk isključen':'Zvuk uključen';
+}
+// Inicijaliziraj label pri loadu
+document.addEventListener('DOMContentLoaded',()=>{
+  if(_muted){
+    const i=document.getElementById('menuMuteIcon');const l=document.getElementById('menuMuteLabel');
+    if(i)i.textContent='🔇';if(l)l.textContent='Zvuk isključen';
+  }
+});
 const _ac=()=>{if(!window._audioCtx){window._audioCtx=new(window.AudioContext||window.webkitAudioContext)();}return window._audioCtx;};
 
-function sndRoll(){
+function sndRoll(){if(_muted)return;
   try{
     const ac=_ac(); const t=ac.currentTime;
     // 3-5 kratkih "clack" zvukova koji simuliraju kockice
@@ -815,7 +825,7 @@ function sndRoll(){
   }catch(e){}
 }
 
-function sndChat(){
+function sndChat(){if(_muted)return;
   try{
     const ac=_ac(); const t=ac.currentTime;
     const o=ac.createOscillator(), g=ac.createGain();
@@ -829,7 +839,7 @@ function sndChat(){
   }catch(e){}
 }
 
-function sndReaction(){
+function sndReaction(){if(_muted)return;
   try{
     const ac=_ac(); const t=ac.currentTime;
     const freqs=[400,500,600,800];
@@ -845,7 +855,7 @@ function sndReaction(){
   }catch(e){}
 }
 
-function sndYahtzee(){
+function sndYahtzee(){if(_muted)return;
   try{
     const ac=_ac(); const t=ac.currentTime;
     // Uzlazna fanfara pa explodirajući akord
@@ -862,7 +872,7 @@ function sndYahtzee(){
   }catch(e){}
 }
 
-function sndFanfara(){
+function sndFanfara(){if(_muted)return;
   try{
     const ac=_ac(); const t=ac.currentTime;
     // Pobjednička fanfara — C dur arpeggio pa završni akord
@@ -1101,7 +1111,7 @@ function scoreBlockHTML(player,room,pIdx,isMe){
   let html=`<div class="sc-block">
   <div class="sc-player-hdr">
     <div class="sc-player-dot" style="background:${color}">${esc(player.name[0].toUpperCase())}</div>
-    <div class="sc-player-name">${esc(player.name)}${isCurPlayer?' 🎲':''}</div>
+    <div class="sc-player-name">${esc(player.name)}${isCurPlayer?' ':''}</div>
     <div class="sc-player-score">${player.grandTotal}</div>
   </div>
   <table class="sc">
@@ -1293,15 +1303,6 @@ function mobNotify(tab){
   if(_mobTab===tab) return;
   const b=document.getElementById('mtab-'+tab);
   if(b) b.classList.add('notify');
-}
-
-// ── PWA Service Worker ──────────────────────────────────────────
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/sw.js')
-      .then(()=>console.log('SW registered'))
-      .catch(e=>console.log('SW error:',e));
-  });
 }
 </script>
 
