@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JAMB Online</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Karla:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f5f0e8;--s1:#ffffff;--s2:#f0eadc;--s3:#e8e0ce;
+  --border:#ddd5c0;--border2:#c8bfa8;
+  --text:#1a160e;--text2:#4a4030;--muted:#8a7d66;--faint:#d0c8b4;
+  --gold:#b8860b;--gold2:#d4a020;--gold3:#f0c040;
+  --red:#c04020;--red2:#e05030;
+  --green:#2a7a3a;--green2:#3a9a4c;
+  --blue:#1a4a8a;--blue2:#2a6ab8;
+  --purple:#7a3a9a;
+  --shadow:rgba(0,0,0,0.08);
+  --r:10px;
+  --die-bg:#ffffff;--die-dot:#1a160e;--die-held-bg:#fef4e0;--die-held-border:#b8860b;
+}
+[data-theme=dark]{
+  --bg:#0f0d0a;--s1:#1c1a15;--s2:#242018;--s3:#2c271e;
+  --border:#38321e;--border2:#504828;
+  --text:#f0e8d8;--text2:#c0a870;--muted:#706048;--faint:#302818;
+  --gold:#d4a020;--gold2:#e8b830;--gold3:#fcd050;
+  --red:#e05030;--red2:#f06040;
+  --green:#3a9a4c;--green2:#50b860;
+  --blue:#2a6ab8;--blue2:#4a8ad0;
+  --purple:#9a50c0;
+  --shadow:rgba(0,0,0,0.4);
+  --die-bg:#2c271e;--die-dot:#f0e8d8;--die-held-bg:#3a2e10;--die-held-border:#d4a020;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Karla',sans-serif;overflow-x:hidden;transition:background .3s,color .3s}
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex}
+
+/* ── LOGIN ─────────────────────────────────────────── */
+#loginScreen{flex-direction:column;align-items:center;justify-content:center;padding:20px;
+  background:var(--bg);position:relative;overflow:hidden}
+#loginScreen::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;
+  background:radial-gradient(circle,rgba(184,134,11,.08) 0%,transparent 70%);
+  top:-100px;left:50%;transform:translateX(-50%);pointer-events:none}
+.logo{font-family:'Bebas Neue',cursive;font-size:clamp(72px,15vw,130px);color:var(--gold);
+  line-height:1;letter-spacing:6px;text-shadow:3px 3px 0 rgba(184,134,11,.15);margin-bottom:4px}
+.logo-sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:5px;
+  text-transform:uppercase;margin-bottom:48px}
+.login-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;
+  padding:32px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:16px;
+  box-shadow:0 8px 40px var(--shadow)}
+.field-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:3px;
+  text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:block}
+input[type=text]{background:var(--s2);border:1.5px solid var(--border);border-radius:8px;
+  padding:12px 14px;color:var(--text);font-family:'Karla',sans-serif;font-size:15px;
+  outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+input[type=text]:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,134,11,.1)}
+input::placeholder{color:var(--faint)}
+.btn-gold{background:var(--gold);color:#fff;border:none;border-radius:8px;
+  padding:13px;font-family:'Karla',sans-serif;font-weight:700;font-size:15px;cursor:pointer;
+  transition:background .15s,transform .1s;width:100%;letter-spacing:.5px;
+  box-shadow:0 4px 16px rgba(184,134,11,.25)}
+.btn-gold:hover{background:var(--gold2)}
+.btn-gold:active{transform:scale(.98)}
+.btn-gold:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── TOPBAR ────────────────────────────────────────── */
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);height:56px;
+  padding:0 20px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;box-shadow:0 2px 10px var(--shadow)}
+.tb-logo{font-family:'Bebas Neue',cursive;font-size:24px;color:var(--gold);letter-spacing:4px}
+.tb-right{display:flex;align-items:center;gap:10px}
+.tb-player{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
+  background:var(--s2);border:1px solid var(--border);border-radius:20px;padding:5px 12px}
+.tb-player b{color:var(--text);font-weight:500}
+.icon-btn{width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border);
+  background:var(--s2);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:16px;transition:all .2s;color:var(--text)}
+.icon-btn:hover{border-color:var(--gold);background:var(--s3)}
+.btn-sm{background:transparent;border:1.5px solid var(--border);border-radius:7px;
+  padding:6px 14px;color:var(--muted);font-family:'Karla',sans-serif;font-size:13px;
+  cursor:pointer;transition:all .2s}
+.btn-sm:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ── LOBBY ─────────────────────────────────────────── */
+#lobbyScreen{flex-direction:column}
+.lobby-body{flex:1;display:grid;grid-template-columns:1fr 320px;overflow:hidden}
+@media(max-width:700px){.lobby-body{grid-template-columns:1fr;grid-template-rows:auto auto}}
+.rooms-panel{padding:24px;overflow-y:auto;border-right:1px solid var(--border)}
+.panel-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;
+  text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.room-list{display:flex;flex-direction:column;gap:8px}
+.room-card{background:var(--s1);border:1.5px solid var(--border);border-radius:var(--r);
+  padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.room-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--gold);opacity:0;transition:opacity .2s}
+.room-card:hover{border-color:var(--gold2);background:var(--s2)}
+.room-card:hover::before{opacity:1}
+.room-card.ingame{opacity:.6;cursor:not-allowed}
+.room-card.full{opacity:.5;cursor:not-allowed}
+.rcard-name{font-weight:600;font-size:14px;margin-bottom:3px}
+.rcard-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)}
+.badge{font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:20px;flex-shrink:0;letter-spacing:.5px}
+.badge-open{background:rgba(42,122,58,.1);color:var(--green2);border:1px solid rgba(42,122,58,.2)}
+.badge-play{background:rgba(184,134,11,.1);color:var(--gold);border:1px solid rgba(184,134,11,.2)}
+.badge-full{background:rgba(192,64,32,.1);color:var(--red);border:1px solid rgba(192,64,32,.2)}
+.no-rooms{color:var(--muted);font-size:13px;text-align:center;padding:40px 0}
+.create-panel{padding:24px;display:flex;flex-direction:column;gap:14px;background:var(--s2);border-left:1px solid var(--border)}
+select{background:var(--s1);border:1.5px solid var(--border);border-radius:8px;
+  padding:11px 14px;color:var(--text);font-family:'Karla',sans-serif;font-size:14px;
+  outline:none;width:100%;transition:border-color .2s}
+select:focus{border-color:var(--gold)}
+select option{background:var(--s1)}
+
+/* ── WAITING ROOM ──────────────────────────────────── */
+#roomScreen{flex-direction:column}
+.wait-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:24px;padding:40px 20px;text-align:center}
+.room-code-display{font-family:'Bebas Neue',cursive;font-size:56px;letter-spacing:14px;color:var(--gold);
+  background:var(--s1);border:1.5px solid var(--border);border-radius:14px;padding:14px 32px;
+  box-shadow:0 4px 20px var(--shadow)}
+.wait-chips{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.player-chip{background:var(--s1);border:1.5px solid var(--border);border-radius:40px;
+  padding:8px 18px;font-size:14px;font-weight:500;display:flex;align-items:center;gap:7px}
+.player-chip.is-host::after{content:'👑';font-size:11px}
+.btn-start{background:var(--green);color:#fff;border:none;border-radius:8px;
+  padding:13px 40px;font-family:'Karla',sans-serif;font-weight:700;font-size:15px;cursor:pointer;
+  transition:all .2s;box-shadow:0 4px 16px rgba(42,122,58,.25)}
+.btn-start:hover{background:var(--green2)}
+
+/* ── GAME SCREEN ───────────────────────────────────── */
+#gameScreen{flex-direction:column}
+.g-topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:10px 18px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:0 2px 8px var(--shadow)}
+.g-logo{font-family:'Bebas Neue',cursive;font-size:22px;color:var(--gold);letter-spacing:3px}
+.g-turn{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);flex:1}
+.g-turn b{color:var(--text);font-weight:500}
+.g-roll-dots{display:flex;gap:5px;align-items:center}
+.rdot{width:9px;height:9px;border-radius:50%;background:var(--faint);transition:background .25s}
+.rdot.on{background:var(--gold);box-shadow:0 0 5px rgba(184,134,11,.6)}
+.rdot-txt{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-left:4px}
+
+.g-body{flex:1;display:grid;grid-template-columns:auto 1fr 250px;overflow:hidden;min-height:0}
+@media(max-width:900px){.g-body{grid-template-columns:1fr;}}
+
+/* ── SCORECARD TABLE ───────────────────────────────── */
+.sc-panel{overflow-y:auto;border-right:1px solid var(--border)}
+.sc-wrap{min-width:360px}
+table.sc{width:100%;border-collapse:collapse;font-size:12px}
+table.sc thead th{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;
+  text-transform:uppercase;color:var(--muted);padding:9px 10px;border-bottom:2px solid var(--border);
+  background:var(--s1);text-align:center;position:sticky;top:0;z-index:2}
+table.sc thead th:first-child{text-align:left;min-width:140px;padding-left:14px}
+table.sc tbody td{padding:7px 10px;border-bottom:1px solid var(--faint);text-align:center;vertical-align:middle}
+table.sc tbody td:first-child{text-align:left;padding-left:14px;font-size:12px;color:var(--text2)}
+.sc-section td{background:var(--s2) !important;font-family:'JetBrains Mono',monospace;font-size:9px;
+  letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:5px 14px !important;
+  border-top:1px solid var(--border2) !important;text-align:left !important}
+.sc-bonus td{background:var(--s2) !important;font-size:11px !important}
+.sc-total td{background:var(--s1) !important;font-weight:700;color:var(--gold) !important;font-size:13px !important;border-top:2px solid var(--border) !important}
+.sc-grand td{background:linear-gradient(90deg,rgba(184,134,11,.08),transparent) !important;
+  font-family:'Bebas Neue',cursive;font-size:16px !important;color:var(--gold) !important;
+  border-top:2px solid var(--gold) !important;letter-spacing:1px}
+/* column header colors */
+.ch-g{color:var(--red2) !important}
+.ch-d{color:var(--blue2) !important}
+.ch-gd{color:var(--green2) !important}
+.ch-dg{color:var(--gold2) !important}
+/* cells */
+.c-empty{color:var(--faint)}
+.c-scored{color:var(--text2);font-weight:600}
+.c-avail{cursor:pointer;color:var(--green2);font-weight:700;background:rgba(42,122,58,.07);
+  border-radius:5px;transition:background .15s}
+.c-avail:hover{background:rgba(42,122,58,.2)}
+.c-locked{color:var(--faint);cursor:not-allowed;font-size:10px}
+.c-zero{cursor:pointer;color:var(--red);font-weight:700;background:rgba(192,64,32,.06);
+  border-radius:5px}
+.c-zero:hover{background:rgba(192,64,32,.15)}
+
+/* ── DICE AREA ─────────────────────────────────────── */
+.dice-area{padding:22px 20px;display:flex;flex-direction:column;align-items:center;gap:18px;
+  border-right:1px solid var(--border);overflow-y:auto}
+.dice-row{display:flex;gap:11px;flex-wrap:wrap;justify-content:center}
+
+/* SVG dot dice */
+.die{width:66px;height:66px;background:var(--die-bg);border:2px solid var(--border);
+  border-radius:13px;cursor:pointer;transition:all .2s;position:relative;
+  box-shadow:0 2px 8px var(--shadow),inset 0 1px 0 rgba(255,255,255,.6);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;user-select:none}
+.die:hover:not(.die-dim){transform:scale(1.08);border-color:var(--gold);box-shadow:0 4px 14px var(--shadow)}
+.die.die-held{background:var(--die-held-bg);border-color:var(--die-held-border);
+  box-shadow:0 0 0 2px rgba(184,134,11,.2),0 4px 12px var(--shadow)}
+.die.die-dim{opacity:.45;cursor:default}
+.die.die-rolling{animation:droll .3s ease}
+@keyframes droll{0%{transform:rotate(0)scale(1)}25%{transform:rotate(-12deg)scale(1.1)}75%{transform:rotate(10deg)scale(1.1)}100%{transform:rotate(0)scale(1)}}
+.die-hold-lbl{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);
+  font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--gold);letter-spacing:1px;white-space:nowrap}
+.die-wrapper{position:relative;padding-bottom:20px}
+.die svg{width:46px;height:46px}
+.die-dot{fill:var(--die-dot)}
+
+.roll-btn{background:var(--gold);color:#fff;border:none;border-radius:8px;
+  padding:13px 28px;font-family:'Karla',sans-serif;font-weight:700;font-size:14px;cursor:pointer;
+  transition:all .2s;min-width:180px;letter-spacing:.5px;
+  box-shadow:0 4px 14px rgba(184,134,11,.25)}
+.roll-btn:hover:not(:disabled){background:var(--gold2);transform:translateY(-1px)}
+.roll-btn:active:not(:disabled){transform:translateY(0)}
+.roll-btn:disabled{background:var(--faint);color:var(--muted);cursor:not-allowed;box-shadow:none}
+.dice-hint{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);text-align:center;max-width:230px;line-height:1.5}
+
+.view-sel-wrap{width:100%;max-width:230px}
+.view-sel-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:3px;
+  text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:block}
+
+/* ── SIDEBAR ───────────────────────────────────────── */
+.g-sidebar{display:flex;flex-direction:column;overflow:hidden;background:var(--s2)}
+.sb-sect{padding:14px;border-bottom:1px solid var(--border)}
+.sb-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:3px;
+  text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.p-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:13px}
+.p-row .pname{display:flex;align-items:center;gap:8px}
+.p-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:11px;color:#fff;flex-shrink:0;transition:box-shadow .3s}
+.p-avatar.active{box-shadow:0 0 0 3px var(--gold),0 0 10px rgba(184,134,11,.4)}
+.pscore{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+.chat-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.chat-msgs{flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:4px}
+.cmsg{font-size:12px;line-height:1.6}
+.cmsg .cn{color:var(--gold);font-weight:600;margin-right:4px}
+.cmsg.sys .ct{color:var(--muted);font-style:italic}
+.chat-inp{display:flex;padding:8px 10px;gap:7px;border-top:1px solid var(--border);background:var(--s1)}
+.chat-inp input{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:6px;
+  padding:7px 10px;color:var(--text);font-family:'Karla',sans-serif;font-size:12px;outline:none}
+.chat-inp input:focus{border-color:var(--gold)}
+.chat-snd{background:var(--s2);border:1px solid var(--border);border-radius:6px;
+  padding:7px 11px;color:var(--muted);cursor:pointer;transition:color .15s}
+.chat-snd:hover{color:var(--gold)}
+
+/* ── GAME OVER ─────────────────────────────────────── */
+#gameOverScreen{flex-direction:column;align-items:center;justify-content:center;
+  padding:40px 20px;gap:20px;text-align:center}
+.go-title{font-family:'Bebas Neue',cursive;font-size:clamp(48px,10vw,80px);
+  color:var(--gold);letter-spacing:6px}
+.go-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);
+  letter-spacing:4px;text-transform:uppercase}
+.res-card{background:var(--s1);border:1.5px solid var(--border);border-radius:14px;
+  overflow:hidden;width:100%;max-width:460px;box-shadow:0 8px 30px var(--shadow)}
+.res-card table{width:100%;border-collapse:collapse}
+.res-card th{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:2px;padding:10px 16px;background:var(--s2);
+  border-bottom:1px solid var(--border)}
+.res-card td{padding:11px 16px;font-size:13px;border-top:1px solid var(--faint)}
+.res-card tr.winner td{color:var(--gold);font-weight:700;background:rgba(184,134,11,.05)}
+
+/* ── TOAST ─────────────────────────────────────────── */
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(60px);
+  background:var(--s1);border:1.5px solid var(--border);border-radius:9px;
+  padding:11px 20px;font-size:13px;z-index:999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  max-width:90vw;text-align:center;box-shadow:0 6px 24px var(--shadow);pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.ok{border-color:var(--green2);color:var(--green2)}
+#toast.err{border-color:var(--red2);color:var(--red2)}
+
+/* mobile */
+@media(max-width:700px){
+  .g-body{grid-template-columns:1fr}
+  .sc-panel{border-right:none;border-bottom:1px solid var(--border)}
+  .sc-wrap{min-width:unset}
+  .dice-area{border-right:none;border-bottom:1px solid var(--border)}
+  .g-sidebar{max-height:320px}
+  .die{width:56px;height:56px}
+  .die svg{width:38px;height:38px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="screen active">
+  <div class="logo">JAMB</div>
+  <div class="logo-sub">Hrvatska Igra · Online Multiplayer</div>
+  <div class="login-card">
+    <div><label class="field-lbl">Tvoje ime</label>
+    <input id="nameInput" type="text" placeholder="Upiši ime…" maxlength="20" autocomplete="off"></div>
+    <button class="btn-gold" onclick="doLogin()">Igraj →</button>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div id="lobbyScreen" class="screen">
+  <div class="topbar">
+    <div class="tb-logo">JAMB</div>
+    <div class="tb-right">
+      <div class="tb-player">👤 <b id="lobName"></b></div>
+      <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" title="Promijeni temu">🌙</button>
+    </div>
+  </div>
+  <div class="lobby-body">
+    <div class="rooms-panel">
+      <div class="panel-label">Otvorene sobe</div>
+      <div class="room-list" id="roomList"><div class="no-rooms">Nema soba — napravi prvu!</div></div>
+    </div>
+    <div class="create-panel">
+      <div class="panel-label">Nova soba</div>
+      <div><label class="field-lbl">Naziv sobe</label>
+      <input id="newRoomName" type="text" placeholder="Moja soba…" maxlength="30"></div>
+      <div><label class="field-lbl">Maks. igrača</label>
+      <select id="maxPlayers">
+        <option value="2">2 igrača</option>
+        <option value="3">3 igrača</option>
+        <option value="4" selected>4 igrača</option>
+      </select></div>
+      <button class="btn-gold" onclick="doCreateRoom()">Napravi sobu →</button>
+    </div>
+  </div>
+</div>
+
+<!-- WAITING ROOM -->
+<div id="roomScreen" class="screen">
+  <div class="topbar">
+    <div class="tb-logo">JAMB</div>
+    <div class="tb-right">
+      <button class="icon-btn" id="themeBtn2" onclick="toggleTheme()">🌙</button>
+      <button class="btn-sm" onclick="doLeaveRoom()">← Natrag</button>
+    </div>
+  </div>
+  <div class="wait-body">
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Kod sobe</div>
+      <div class="room-code-display" id="roomCode">——</div>
+    </div>
+    <div style="color:var(--muted);font-size:13px">Podijeli kod s prijateljem</div>
+    <div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:10px">Igrači</div>
+      <div class="wait-chips" id="waitChips"></div>
+    </div>
+    <div id="startWrap" style="display:none">
+      <button class="btn-start" onclick="doStartGame()">🎲 Pokreni igru →</button>
+    </div>
+    <div id="waitHint" style="color:var(--muted);font-size:13px;font-style:italic">Čekanje na hosta da pokrene igru…</div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="gameScreen" class="screen">
+  <div class="g-topbar">
+    <div class="g-logo">JAMB</div>
+    <div class="g-turn">Runda <b id="gRound">1</b> · red: <b id="gCurPlayer">—</b></div>
+    <div class="g-roll-dots" id="gRollDots"></div>
+    <span class="rdot-txt" id="gRollTxt"></span>
+    <button class="icon-btn" id="themeBtn3" onclick="toggleTheme()">🌙</button>
+    <button class="btn-sm" onclick="doLeaveRoom()">Napusti</button>
+  </div>
+  <div class="g-body">
+    <!-- Scorecard -->
+    <div class="sc-panel">
+      <div class="sc-wrap">
+        <table class="sc" id="scTable">
+          <thead>
+            <tr>
+              <th></th>
+              <th class="ch-g">↓ Gore</th>
+              <th class="ch-d">↑ Dolje</th>
+              <th class="ch-gd">↕ G-D</th>
+              <th class="ch-dg">★ D-G</th>
+            </tr>
+          </thead>
+          <tbody id="scBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Dice -->
+    <div class="dice-area">
+      <div class="dice-row" id="diceRow"></div>
+      <button class="roll-btn" id="rollBtn" onclick="doRoll()">🎲 Baci kockice</button>
+      <div class="dice-hint" id="diceHint">Baci kockice za početak poteza</div>
+      <div class="view-sel-wrap" style="margin-top:6px">
+        <span class="view-sel-lbl">Prikaži tablicu igrača:</span>
+        <select id="viewSelect" onchange="setViewPlayer(this.value)"></select>
+      </div>
+    </div>
+    <!-- Sidebar -->
+    <div class="g-sidebar">
+      <div class="sb-sect">
+        <div class="sb-lbl">Igrači</div>
+        <div id="gPlayers"></div>
+      </div>
+      <div class="chat-wrap">
+        <div class="sb-lbl" style="padding:12px 12px 0">Chat</div>
+        <div class="chat-msgs" id="chatMsgs"></div>
+        <div class="chat-inp">
+          <input id="chatIn" type="text" placeholder="Poruka…" maxlength="200"
+            onkeydown="if(event.key==='Enter')doSendChat()">
+          <button class="chat-snd" onclick="doSendChat()">→</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameOverScreen" class="screen">
+  <div class="go-title">KRAJ IGRE</div>
+  <div class="go-sub">Konačni rezultati</div>
+  <div class="res-card">
+    <table><thead><tr><th>#</th><th>Igrač</th><th>Bodovi</th></tr></thead>
+    <tbody id="goResults"></tbody></table>
+  </div>
+  <button class="btn-gold" style="width:auto;padding:13px 36px" onclick="goLobby()">← Nazad na lobby</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── socket.io dynamic load ────────────────────────────
+(function(){
+  const s=document.createElement('script');
+  s.src='/socket.io/socket.io.js';
+  s.onload=initApp;
+  document.head.appendChild(s);
+})();
+
+// ── THEME ─────────────────────────────────────────────
+let darkMode = localStorage.getItem('jambTheme')==='dark';
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',darkMode?'dark':'');
+  const ico=darkMode?'☀️':'🌙';
+  ['themeBtn','themeBtn2','themeBtn3'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent=ico;
+  });
+}
+function toggleTheme(){ darkMode=!darkMode; localStorage.setItem('jambTheme',darkMode?'dark':'light'); applyTheme(); }
+applyTheme();
+
+// ── STATE ─────────────────────────────────────────────
+let socket, myName='', myRoomId='', roomState=null, viewPlayerId=null;
+
+const PLAYER_COLORS=['#c04020','#1a4a8a','#2a7a3a','#7a3a9a','#b8860b','#1a7a8a'];
+
+const ROWS=[
+  {id:'r1',label:'Jedinice (1)',section:'upper'},
+  {id:'r2',label:'Dvojke (2)',section:'upper'},
+  {id:'r3',label:'Trojke (3)',section:'upper'},
+  {id:'r4',label:'Četvorke (4)',section:'upper'},
+  {id:'r5',label:'Petice (5)',section:'upper'},
+  {id:'r6',label:'Šestice (6)',section:'upper'},
+  {id:'tris',label:'Tris (+10)',section:'middle'},
+  {id:'skala_mala',label:'Mala skala (35)',section:'middle'},
+  {id:'skala_velika',label:'Velika skala (42)',section:'middle'},
+  {id:'full',label:'Full (+30)',section:'middle'},
+  {id:'poker',label:'Poker (+40)',section:'middle'},
+  {id:'jamb',label:'JAMB (+50)',section:'middle'},
+  {id:'min',label:'Minimum',section:'lower'},
+  {id:'max',label:'Maksimum',section:'lower'},
+];
+const COLS=['g','d','gd','dg'];
+const COL_LABELS={g:'↓ Gore',d:'↑ Dolje',gd:'↕ G-D',dg:'★ D-G'};
+
+// Client-side can-score logic (mirrors server)
+function getNextRequired(col, scorecard){
+  const sc=scorecard[col];
+  const ROW_IDS=ROWS.map(r=>r.id);
+  if(col==='g'){const o=['r1','r2','r3','r4','r5','r6','tris','skala_mala','skala_velika','full','poker','jamb','min','max'];return o.find(r=>sc[r]===undefined)||null;}
+  if(col==='d'){const o=['max','min','jamb','poker','full','skala_velika','skala_mala','tris','r6','r5','r4','r3','r2','r1'];return o.find(r=>sc[r]===undefined)||null;}
+  if(col==='gd'){const o=['r1','r2','r3','r4','r5','r6','tris','skala_mala','skala_velika','full','poker','jamb','min','max'];return o.find(r=>sc[r]===undefined)||null;}
+  return null; // dg = free
+}
+function canScore(col,rowId,scorecard){
+  if(scorecard[col][rowId]!==undefined) return false;
+  const next=getNextRequired(col,scorecard);
+  if(next===null) return true;
+  return next===rowId;
+}
+function previewScore(rowId,dice){
+  const counts=Array(7).fill(0);dice.forEach(d=>counts[d]++);
+  const sum=dice.reduce((a,b)=>a+b,0);
+  const nm={r1:1,r2:2,r3:3,r4:4,r5:5,r6:6};
+  if(nm[rowId]!==undefined) return dice.filter(d=>d===nm[rowId]).reduce((a,b)=>a+b,0);
+  switch(rowId){
+    case 'min':case 'max': return sum;
+    case 'tris': return counts.some(c=>c>=3)?sum+10:0;
+    case 'skala_mala': return [1,2,3,4,5].every(n=>counts[n]>0)?35:0;
+    case 'skala_velika': return [2,3,4,5,6].every(n=>counts[n]>0)?42:0;
+    case 'full':{const v=counts.map((c,i)=>({c,i})).filter(x=>x.c>0&&x.i>0);return v.length===2&&((v[0].c===3&&v[1].c===2)||(v[0].c===2&&v[1].c===3))?sum+30:0;}
+    case 'poker': return counts.some(c=>c>=4)?sum+40:0;
+    case 'jamb': return counts.some(c=>c>=5)?sum+50:0;
+  }
+  return 0;
+}
+function upperSum(colSc){return['r1','r2','r3','r4','r5','r6'].reduce((a,k)=>a+(colSc[k]??0),0);}
+function calcDiff(colSc){
+  const max=colSc['max'],min=colSc['min'],ones=colSc['r1'];
+  if(max===undefined||min===undefined||ones===undefined) return null;
+  return (max-min)*ones;
+}
+function colTotal(colSc){
+  const up=upperSum(colSc);
+  const bonus=up>=60?30:0;
+  const diff=calcDiff(colSc)||0;
+  const mid=['tris','skala_mala','skala_velika','full','poker','jamb'].reduce((a,k)=>a+(colSc[k]??0),0);
+  return up+bonus+diff+mid;
+}
+
+// ── UTILS ─────────────────────────────────────────────
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast show '+(type);
+  clearTimeout(el._t);el._t=setTimeout(()=>el.className='toast',2800);
+}
+function isMyTurn(room){return room.players[room.currentPlayerIndex]?.id===socket.id;}
+
+// ── DIE SVG ───────────────────────────────────────────
+function dieSVG(n){
+  const dots={
+    1:[[23,23]],
+    2:[[11,11],[35,35]],
+    3:[[11,11],[23,23],[35,35]],
+    4:[[11,11],[35,11],[11,35],[35,35]],
+    5:[[11,11],[35,11],[23,23],[11,35],[35,35]],
+    6:[[11,11],[35,11],[11,23],[35,23],[11,35],[35,35]],
+  };
+  const pts=(dots[n]||[]).map(([cx,cy])=>`<circle class="die-dot" cx="${cx}" cy="${cy}" r="5"/>`).join('');
+  return `<svg viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">${pts}</svg>`;
+}
+
+// ── INIT APP ─────────────────────────────────────────
+function initApp(){
+  if(typeof io==='undefined'){return setTimeout(initApp,50);}
+  socket=io({transports:['websocket','polling']});
+  socket.on('connect',()=>console.log('✅',socket.id));
+  socket.on('connect_error',e=>{console.error(e);toast('Greška spajanja!','err');});
+
+  // Login
+  document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+  socket.on('nameSet',p=>{
+    myName=p.name;
+    document.getElementById('lobName').textContent=p.name;
+    show('lobbyScreen');socket.emit('getRooms');
+  });
+
+  // Lobby
+  socket.on('roomList',renderRoomList);
+  socket.on('roomJoined',room=>{myRoomId=room.id;roomState=room;renderWait(room);show('roomScreen');});
+  socket.on('roomUpdate',room=>{roomState=room;if(room.state==='lobby')renderWait(room);else renderGame(room);});
+  socket.on('gameStarted',room=>{roomState=room;viewPlayerId=socket.id;renderGame(room);show('gameScreen');});
+  socket.on('gameOver',room=>{roomState=room;renderGameOver(room);show('gameOverScreen');});
+  socket.on('chatMessage',msg=>{
+    const el=document.getElementById('chatMsgs');
+    const d=document.createElement('div');
+    d.className='cmsg'+(msg.name?'':' sys');
+    d.innerHTML=msg.name?`<span class="cn">${esc(msg.name)}</span><span class="ct">${esc(msg.text)}</span>`:`<span class="ct">${esc(msg.text)}</span>`;
+    el.appendChild(d);el.scrollTop=el.scrollHeight;
+  });
+  socket.on('error',msg=>toast(msg,'err'));
+  socket.on('disconnect',()=>toast('Veza prekinuta…','err'));
+}
+
+// ── ACTIONS ──────────────────────────────────────────
+function doLogin(){
+  const n=document.getElementById('nameInput').value.trim();
+  if(!n)return toast('Upiši ime!','err');
+  socket.emit('setName',n);
+}
+function doCreateRoom(){
+  const name=document.getElementById('newRoomName').value.trim();
+  const max=parseInt(document.getElementById('maxPlayers').value);
+  socket.emit('createRoom',{roomName:name,maxPlayers:max});
+}
+function doJoinRoom(id){socket.emit('joinRoom',id);}
+function doStartGame(){socket.emit('startGame',myRoomId);}
+function doLeaveRoom(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');}
+function doRoll(){
+  if(!roomState||!isMyTurn(roomState)||roomState.rollsLeft<=0)return;
+  document.querySelectorAll('.die:not(.die-held)').forEach(d=>{d.classList.add('die-rolling');setTimeout(()=>d.classList.remove('die-rolling'),300);});
+  socket.emit('rollDice',myRoomId);
+}
+function doToggleHold(i){
+  if(!roomState||!isMyTurn(roomState)||!roomState.hasRolled||roomState.rollsLeft<=0)return;
+  socket.emit('toggleHold',{roomId:myRoomId,index:i});
+}
+function doScore(col,row){
+  if(!roomState||!isMyTurn(roomState))return;
+  if(!roomState.hasRolled)return toast('Prvo baci kockice!','err');
+  socket.emit('scoreCategory',{roomId:myRoomId,col,row});
+}
+function doSendChat(){
+  const el=document.getElementById('chatIn');const t=el.value.trim();if(!t)return;
+  socket.emit('chatMessage',{roomId:myRoomId,text:t});el.value='';
+}
+function setViewPlayer(id){viewPlayerId=id;if(roomState)renderScorecard(roomState);}
+function goLobby(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');}
+
+// ── RENDER ROOM LIST ──────────────────────────────────
+function renderRoomList(rooms){
+  const el=document.getElementById('roomList');
+  if(!rooms.length){el.innerHTML='<div class="no-rooms">Nema soba — napravi prvu!</div>';return;}
+  el.innerHTML=rooms.map(r=>{
+    const isFull=r.players>=r.maxPlayers,isPlay=r.state!=='lobby';
+    const cls=isFull?'full':isPlay?'ingame':'';
+    const badge=isPlay?'<span class="badge badge-play">U tijeku</span>':isFull?'<span class="badge badge-full">Puno</span>':'<span class="badge badge-open">Slobodno</span>';
+    const names=r.playerNames?r.playerNames.join(', '):'';
+    return `<div class="room-card ${cls}" onclick="${isFull||isPlay?'':'doJoinRoom(\''+r.id+'\')'}">
+      <div>
+        <div class="rcard-name">${esc(r.name)}</div>
+        <div class="rcard-meta">${r.players}/${r.maxPlayers} · #${r.id}${names?' · '+esc(names):''}</div>
+      </div>${badge}</div>`;
+  }).join('');
+}
+
+// ── RENDER WAITING ROOM ───────────────────────────────
+function renderWait(room){
+  document.getElementById('roomCode').textContent=room.id;
+  const isHost=room.host===socket.id;
+  document.getElementById('startWrap').style.display=isHost?'block':'none';
+  document.getElementById('waitHint').style.display=isHost?'none':'block';
+  document.getElementById('waitChips').innerHTML=room.players.map((p,i)=>
+    `<div class="player-chip ${p.id===room.host?'is-host':''}">
+      <div style="width:22px;height:22px;border-radius:50%;background:${PLAYER_COLORS[i%PLAYER_COLORS.length]};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:10px">${esc(p.name[0].toUpperCase())}</div>
+      ${esc(p.name)}
+    </div>`
+  ).join('');
+}
+
+// ── RENDER GAME ───────────────────────────────────────
+function renderGame(room){
+  const me=isMyTurn(room);
+  const cur=room.players[room.currentPlayerIndex];
+
+  document.getElementById('gRound').textContent=room.round;
+  document.getElementById('gCurPlayer').textContent=cur?.name??'?';
+
+  // Roll dots (3 = unrolled, 2 = 1 roll done, etc.)
+  const rollsDone=3-room.rollsLeft;
+  document.getElementById('gRollDots').innerHTML=[0,1,2].map(i=>`<div class="rdot ${i<rollsDone?'on':''}"></div>`).join('');
+  document.getElementById('gRollTxt').textContent=room.rollsLeft+' bacanja';
+
+  // Dice
+  document.getElementById('diceRow').innerHTML=room.dice.map((v,i)=>{
+    const held=room.heldDice[i];
+    const dim=!me?'die-dim':'';
+    const canHold=me&&room.hasRolled&&room.rollsLeft>0;
+    return `<div class="die-wrapper">
+      <div class="die ${held?'die-held':''} ${dim}" onclick="${canHold?`doToggleHold(${i})`:''}" style="${!canHold?'cursor:default':''}">${dieSVG(v)}</div>
+      ${held?'<div class="die-hold-lbl">DRŽI</div>':''}
+    </div>`;
+  }).join('');
+
+  // Roll button
+  const rb=document.getElementById('rollBtn');
+  if(!me){rb.disabled=true;rb.textContent=`⏳ ${cur?.name??'...'}...`;}
+  else if(room.rollsLeft===0){rb.disabled=true;rb.textContent='✔ Upiši u tablicu';}
+  else if(!room.hasRolled){rb.disabled=false;rb.textContent='🎲 Baci kockice';}
+  else{rb.disabled=false;rb.textContent=`🎲 Baci ponovo (${room.rollsLeft}x)`;}
+
+  document.getElementById('diceHint').textContent=
+    !me?`Čekanje na ${cur?.name??''}…`:
+    !room.hasRolled?'Baci kockice za početak poteza':
+    room.rollsLeft===0?'Odaberi polje u tablici za upis':
+    'Klikni na kockice da ih zadržiš';
+
+  // View selector
+  const vs=document.getElementById('viewSelect');
+  const curView=viewPlayerId;
+  vs.innerHTML=room.players.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  if(curView&&room.players.find(p=>p.id===curView)) vs.value=curView;
+  else {viewPlayerId=socket.id||room.players[0]?.id; vs.value=viewPlayerId;}
+
+  renderScorecard(room);
+  renderPlayers(room);
+}
+
+// ── RENDER SCORECARD ──────────────────────────────────
+function renderScorecard(room){
+  const me=isMyTurn(room);
+  const viewP=room.players.find(p=>p.id===viewPlayerId)||room.players[0];
+  const curP=room.players[room.currentPlayerIndex];
+  const isViewingCur=viewP?.id===curP?.id;
+  const canPick=me&&room.hasRolled&&isViewingCur;
+  const dice=room.dice;
+  const sc=viewP?.scorecard||{g:{},d:{},gd:{},dg:{}};
+
+  let html='';
+
+  // ── GORNJI DIO ──
+  html+=`<tr class="sc-section"><td colspan="5">▸ Gornji dio</td></tr>`;
+  ['r1','r2','r3','r4','r5','r6'].forEach(id=>{
+    const row=ROWS.find(r=>r.id===id);
+    html+=`<tr><td>${esc(row.label)}</td>${COLS.map(col=>cell(col,id,sc,canPick,dice)).join('')}</tr>`;
+  });
+
+  // Zbroj gornjeg + bonus
+  html+=`<tr class="sc-bonus"><td style="color:var(--muted)">Zbroj gornjeg</td>${COLS.map(col=>{
+    const s=upperSum(sc[col]);
+    return `<td style="color:var(--text2);font-weight:600">${Object.keys(sc[col]).length>0||s?s:''}</td>`;
+  }).join('')}</tr>`;
+  html+=`<tr class="sc-bonus"><td style="color:var(--green2)">Bonus (≥60 → +30)</td>${COLS.map(col=>{
+    const s=upperSum(sc[col]);
+    const allEmpty=Object.keys(sc[col]).filter(k=>['r1','r2','r3','r4','r5','r6'].includes(k)&&sc[col][k]!==undefined).length===0;
+    if(allEmpty)return`<td></td>`;
+    return`<td style="color:var(--green2);font-weight:700">${s>=60?'+30':'Need '+(60-s)}</td>`;
+  }).join('')}</tr>`;
+
+  // ── SREDNJI DIO ──
+  html+=`<tr class="sc-section"><td colspan="5">▸ Srednji dio</td></tr>`;
+  ['tris','skala_mala','skala_velika','full','poker','jamb'].forEach(id=>{
+    const row=ROWS.find(r=>r.id===id);
+    html+=`<tr><td>${esc(row.label)}</td>${COLS.map(col=>cell(col,id,sc,canPick,dice)).join('')}</tr>`;
+  });
+
+  // ── DONJI DIO ──
+  html+=`<tr class="sc-section"><td colspan="5">▸ Donji dio</td></tr>`;
+  ['min','max'].forEach(id=>{
+    const row=ROWS.find(r=>r.id===id);
+    html+=`<tr><td>${esc(row.label)}</td>${COLS.map(col=>cell(col,id,sc,canPick,dice)).join('')}</tr>`;
+  });
+  html+=`<tr class="sc-bonus"><td style="color:var(--blue2)">(Max−Min) × Jedinice</td>${COLS.map(col=>{
+    const d=calcDiff(sc[col]);
+    return`<td style="color:var(--blue2);font-weight:${d!==null?'700':'400'}">${d!==null?d:'—'}</td>`;
+  }).join('')}</tr>`;
+
+  // ── TOTALI ──
+  html+=`<tr class="sc-total"><td>Ukupno (stupac)</td>${COLS.map(col=>`<td>${colTotal(sc[col])}</td>`).join('')}</tr>`;
+  const grand=COLS.reduce((a,col)=>a+colTotal(sc[col]),0);
+  html+=`<tr class="sc-grand"><td>🏆 UKUPNO</td><td colspan="4" style="text-align:center">${grand}</td></tr>`;
+
+  document.getElementById('scBody').innerHTML=html;
+}
+
+function cell(col,rowId,sc,canPick,dice){
+  const colSc=sc[col]||{};
+  const val=colSc[rowId];
+  if(val!==undefined) return`<td class="c-scored">${val}</td>`;
+  if(!canPick) return`<td class="c-empty">·</td>`;
+  const ok=canScore(col,rowId,sc);
+  if(!ok) return`<td class="c-locked" title="Mora u redoslijedu">🔒</td>`;
+  const prev=previewScore(rowId,dice);
+  const cls=prev===0?'c-zero':'c-avail';
+  return`<td class="${cls}" onclick="doScore('${col}','${rowId}')" title="Upiši ${prev} bodova">${prev}</td>`;
+}
+
+// ── RENDER PLAYERS ────────────────────────────────────
+function renderPlayers(room){
+  document.getElementById('gPlayers').innerHTML=room.players.map((p,i)=>`
+    <div class="p-row">
+      <div class="pname">
+        <div class="p-avatar ${i===room.currentPlayerIndex?'active':''}" style="background:${PLAYER_COLORS[i%PLAYER_COLORS.length]}">${esc(p.name[0].toUpperCase())}</div>
+        <span>${esc(p.name)}</span>
+      </div>
+      <div class="pscore">${p.grandTotal}</div>
+    </div>`).join('');
+}
+
+// ── GAME OVER ─────────────────────────────────────────
+function renderGameOver(room){
+  const sorted=[...room.players].sort((a,b)=>b.grandTotal-a.grandTotal);
+  document.getElementById('goResults').innerHTML=sorted.map((p,i)=>
+    `<tr class="${i===0?'winner':''}">
+      <td>${['🥇','🥈','🥉'][i]||(i+1)+'.'}</td>
+      <td>${esc(p.name)}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${p.grandTotal}</td>
+    </tr>`
+  ).join('');
+}
+</script>
+</body>
+</html>
