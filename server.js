@@ -415,7 +415,9 @@ io.on('connection',(socket)=>{
     if(cur.id!==socket.id) return socket.emit('error','Nije tvoj red!');
     if(!room.hasRolled) return socket.emit('error','Prvo baci kockice!');
 
-    const mustKontra = room.activeAnnouncement && room.activeAnnouncement.playerId !== socket.id
+    const isSoloGame = room.players.length === 1;
+    const mustKontra = room.activeAnnouncement
+                       && (isSoloGame || room.activeAnnouncement.playerId !== socket.id)
                        && cur.scorecard['kon'][room.activeAnnouncement.rowId] === undefined;
     const mustNajava = !!room.announcement;
 
@@ -432,7 +434,8 @@ io.on('connection',(socket)=>{
     if(col==='kon'){
       if(!room.activeAnnouncement) return socket.emit('error','Nema aktivne najave za kontru!');
       if(room.activeAnnouncement.rowId !== row) return socket.emit('error','Možeš upisati samo kontra polje!');
-      if(room.activeAnnouncement.playerId === socket.id) return socket.emit('error','Ne možeš kontirati vlastitu najavu!');
+      const isSolo = room.players.length === 1;
+      if(!isSolo && room.activeAnnouncement.playerId === socket.id) return socket.emit('error','Ne možeš kontirati vlastitu najavu!');
     }
     if(!canScore(col,row,cur.scorecard)) return socket.emit('error','Ne možeš upisati tu!');
 
@@ -449,7 +452,8 @@ io.on('connection',(socket)=>{
     if(col==='kon'){
       const aid = room.activeAnnouncement.playerId;
       const rid2 = room.activeAnnouncement.rowId;
-      const allDone = room.players.filter(p=>p.id!==aid).every(p=>p.scorecard['kon'][rid2]!==undefined);
+      const soloMode = room.players.length === 1;
+      const allDone = soloMode ? cur.scorecard['kon'][rid2]!==undefined : room.players.filter(p=>p.id!==aid).every(p=>p.scorecard['kon'][rid2]!==undefined);
       if(allDone) room.activeAnnouncement = null;
     }
 

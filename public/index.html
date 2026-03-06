@@ -1245,7 +1245,8 @@ function renderGame(room){
 
   // Hint
   let hint='';
-  const mustKontraMe = RS && room.activeAnnouncement && room.activeAnnouncement.playerId !== socket.id;
+  const isSoloHint = RS && RS.players.length === 1;
+  const mustKontraMe = RS && room.activeAnnouncement && (isSoloHint || room.activeAnnouncement.playerId !== socket.id);
   const myScorecard = room.players.find(p=>p.id===socket.id)?.scorecard;
   const kontraAlreadyDone = mustKontraMe && myScorecard && myScorecard['kon'][room.activeAnnouncement.rowId] !== undefined;
   if(!me)hint=`⏳ ${cur?.name??''}…`;
@@ -1336,7 +1337,8 @@ function cellHTML(col,rid,sc,canPick,canAct,dice,ann,activeAnn,player,room){
   if(val!==undefined) return`<td class="cs" ${dataAttr}>${val}</td>`;
 
   // Je li ovaj igrač obavezan upisati kontru?
-  const mustKontra = activeAnn && activeAnn.playerId !== player.id
+  const isSoloGame = room.players.length === 1;
+  const mustKontra = activeAnn && (isSoloGame || activeAnn.playerId !== player.id)
                      && sc['kon'][activeAnn.rowId] === undefined;
   // Je li ovaj igrač najavil/a (i mora upisati u najava)?
   const mustNajava = !!(ann && ann.playerId === player.id);
@@ -1363,8 +1365,9 @@ function cellHTML(col,rid,sc,canPick,canAct,dice,ann,activeAnn,player,room){
   if(col==='kon'){
     if(!activeAnn) return`<td class="ck-lock">—</td>`;
     if(activeAnn.rowId!==rid) return`<td class="ck-lock">—</td>`;
-    // Najavljivač ne može upisati vlastitu kontru
-    if(activeAnn.playerId===player.id) return`<td class="ck-lock" title="Vlastita najava">✗</td>`;
+    // Najavljivač ne može upisati vlastitu kontru (osim u solo igri)
+    const isSolo = room.players.length === 1;
+    if(!isSolo && activeAnn.playerId===player.id) return`<td class="ck-lock" title="Vlastita najava">✗</td>`;
     // Moj red + bacano = mogu upisati
     if(canPick){
       const ad5k=(room.activeDice||[true,true,true,true,true,true]);
