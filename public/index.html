@@ -354,7 +354,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     <div><label class="flbl" data-i18n="login.label">Tvoje ime</label>
     <input id="nameInput" type="text" data-i18n="login.placeholder" data-i18n-attr="placeholder" placeholder="Upiši ime…" maxlength="20" autocomplete="off">
     <div id="nameErr" style="display:none;color:var(--red2);font-size:12px;margin-top:6px;font-family:'JetBrains Mono',monospace"></div></div>
-    <button class="btn-gold" onclick="doLogin()" data-i18n="login.btn">Igraj →</button>
+    <button class="btn-gold" onclick="doLogin()" data-i18n="login.btn">Igraj </button>
   </div>
 </div>
 
@@ -384,14 +384,14 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
         <option value="5" selected>🎲 5</option>
         <option value="6">🎲🎲 6</option>
       </select></div>
-      <button class="btn-gold" onclick="doCreateRoom()" data-i18n="lobby.createBtn">Napravi sobu →</button>
+      <button class="btn-gold" onclick="doCreateRoom()" data-i18n="lobby.createBtn">Napravi sobu </button>
       <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:16px">
         <label class="flbl" data-i18n="lobby.joinCode">Pridruži se kodom</label>
         <div style="display:flex;gap:8px">
           <input id="joinCodeInput" type="text" data-i18n="lobby.joinCode.placeholder" data-i18n-attr="placeholder" placeholder="Npr. VV14LW…" maxlength="6"
             style="text-transform:uppercase;letter-spacing:3px;font-family:'JetBrains Mono',monospace;font-size:15px;flex:1"
             onkeydown="if(event.key==='Enter')doJoinByCode()">
-          <button class="btn-gold" style="width:auto;padding:0 18px;white-space:nowrap" onclick="doJoinByCode()" data-i18n="lobby.joinBtn">Spoji →</button>
+          <button class="btn-gold" style="width:auto;padding:0 18px;white-space:nowrap" onclick="doJoinByCode()" data-i18n="lobby.joinBtn">Spoji </button>
         </div>
       </div>
     </div>
@@ -423,7 +423,6 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
       <span id="lobMenuLangLabel" data-i18n="menu.lang">🇬🇧 English</span>
     </div>
     <div class="game-menu-item" style="margin-top:auto;color:var(--red2)" onclick="toggleLobbyMenu();doLogout()">
-      <span>🚪</span>
       <span data-i18n="menu.logout">Odjava</span>
     </div>
   </div>
@@ -446,7 +445,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
       <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:9px" data-i18n="wait.players">Igrači</div>
       <div class="wait-chips" id="waitChips"></div>
     </div>
-    <div id="startWrap" style="display:none"><button class="btn-start" onclick="doStartGame()" data-i18n="wait.start">🎲 Pokreni igru →</button></div>
+    <div id="startWrap" style="display:none"><button class="btn-start" onclick="doStartGame()" data-i18n="wait.start">🎲 Pokreni igru </button></div>
     <div id="waitHint" style="color:var(--muted);font-size:13px;font-style:italic" data-i18n="wait.hint">Čekanje na hosta…</div>
     <button class="btn-sm" onclick="doLeaveRoom()" style="margin-top:4px" data-i18n="wait.leave">← Napusti sobu</button>
   </div>
@@ -509,7 +508,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
         <div class="chat-msgs" id="chatMsgs"></div>
         <div class="chat-inp">
           <input id="chatIn" type="text" placeholder="Poruka…" maxlength="200" onkeydown="if(event.key==='Enter')doSendChat()">
-          <button class="chat-snd" onclick="doSendChat()">→</button>
+          <button class="chat-snd" onclick="doSendChat()"></button>
         </div>
       </div>
     </div>
@@ -530,7 +529,6 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
         <span id="menuMuteLabel" data-i18n="menu.sound.on">Zvuk uključen</span>
       </div>
       <div class="game-menu-item" onclick="toggleLang()">
-        <span>🌐</span>
         <span id="menuLangLabel" data-i18n="menu.lang">🇬🇧 English</span>
       </div>
       <div class="game-menu-item" onclick="toggleMenu();showHelp()">
@@ -538,7 +536,6 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
         <span data-i18n="menu.help">Upute</span>
       </div>
       <div class="game-menu-item" style="margin-top:auto;color:var(--red2)" onclick="toggleMenu();doLeaveRoom()">
-        <span>🚪</span>
         <span data-i18n="menu.leave">Napusti igru</span>
       </div>
     </div>
@@ -567,7 +564,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
     <tbody id="goResults"></tbody></table>
   </div>
   <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
-    <button id="rematchBtn" class="btn-start" style="display:none;padding:13px 36px" onclick="doRematch()" data-i18n="go.rematch">🔄 Igraj ponovo</button>
+    <button id="rematchBtn" class="btn-start" style="display:none;padding:13px 36px" onclick="doRematch()" data-i18n="go.rematch">Igraj ponovo</button>
     <button class="btn-gold" style="width:auto;padding:13px 36px" onclick="goLobby()" data-i18n="go.lobby">← Natrag na lobby</button>
   </div>
   <div id="rematchHint" style="font-size:12px;color:var(--muted);display:none" data-i18n="go.rematchHint">Čekanje da host pokrene novu igru…</div>
@@ -607,7 +604,7 @@ const I18N = {
     'logo.sub': 'Hrvatska Igra · Online Multiplayer',
     'login.label': 'Tvoje ime',
     'login.placeholder': 'Upiši ime…',
-    'login.btn': 'Igraj →',
+    'login.btn': 'Igraj ',
     // Lobby
     'lobby.openRooms': 'Otvorene sobe',
     'lobby.noRooms': 'Nema soba — napravi prvu!',
@@ -616,10 +613,10 @@ const I18N = {
     'lobby.roomName.placeholder': 'Moja soba…',
     'lobby.maxPlayers': 'Maks. igrača',
     'lobby.numDice': 'Broj kockica',
-    'lobby.createBtn': 'Napravi sobu →',
+    'lobby.createBtn': 'Napravi sobu ',
     'lobby.joinCode': 'Pridruži se kodom',
     'lobby.joinCode.placeholder': 'Npr. VV14LW…',
-    'lobby.joinBtn': 'Spoji →',
+    'lobby.joinBtn': 'Spoji ',
     'lobby.solo': '1 igrač (solo)',
     // Menu
     'menu.title': 'IZBORNIK',
@@ -636,7 +633,7 @@ const I18N = {
     'wait.code': 'Kod sobe',
     'wait.share': 'Podijeli kod s prijateljem da se spoji',
     'wait.players': 'Igrači',
-    'wait.start': '🎲 Pokreni igru →',
+    'wait.start': '🎲 Pokreni igru ',
     'wait.hint': 'Čekanje na hosta…',
     'wait.leave': '← Napusti sobu',
     'wait.copy': '✓ Kopirano!',
@@ -658,7 +655,7 @@ const I18N = {
     // Game over
     'go.title': 'KRAJ IGRE',
     'go.sub': 'Konačni rezultati',
-    'go.rematch': '🔄 Igraj ponovo',
+    'go.rematch': ' Igraj ponovo',
     'go.lobby': '← Natrag na lobby',
     'go.rematchHint': 'Čekanje da host pokrene novu igru…',
     // Scorecard rows
@@ -671,13 +668,13 @@ const I18N = {
     'toast.nameRequired': 'Upiši ime!',
     'toast.codeRequired': 'Upiši kod sobe!',
     'toast.copied': '👋 Dobrodošao natrag',
-    'toast.newGame': '🔄 Nova igra počinje!',
+    'toast.newGame': 'Nova igra počinje!',
   },
   en: {
     'logo.sub': 'Croatian Dice Game · Online Multiplayer',
     'login.label': 'Your name',
     'login.placeholder': 'Enter name…',
-    'login.btn': 'Play →',
+    'login.btn': 'Play ',
     'lobby.openRooms': 'Open rooms',
     'lobby.noRooms': 'No rooms — create the first one!',
     'lobby.newRoom': 'New room',
@@ -685,10 +682,10 @@ const I18N = {
     'lobby.roomName.placeholder': 'My room…',
     'lobby.maxPlayers': 'Max players',
     'lobby.numDice': 'Number of dice',
-    'lobby.createBtn': 'Create room →',
+    'lobby.createBtn': 'Create room ',
     'lobby.joinCode': 'Join by code',
     'lobby.joinCode.placeholder': 'E.g. VV14LW…',
-    'lobby.joinBtn': 'Join →',
+    'lobby.joinBtn': 'Join ',
     'lobby.solo': '1 player (solo)',
     'menu.title': 'MENU',
     'menu.profile': 'Click for profile',
@@ -703,7 +700,7 @@ const I18N = {
     'wait.code': 'Room code',
     'wait.share': 'Share the code with a friend to join',
     'wait.players': 'Players',
-    'wait.start': '🎲 Start game →',
+    'wait.start': '🎲 Start game ',
     'wait.hint': 'Waiting for host…',
     'wait.leave': '← Leave room',
     'wait.copy': '✓ Copied!',
@@ -905,7 +902,7 @@ function initApp(){
   socket.on('rematchStarted',room=>{RS=room;myRoomId=room.id;renderGame(room);show('gameScreen');mobInit();toast(t('toast.newGame'),'ok');});
 
   socket.on('autoScored',({col,rowId,score,playerName})=>{
-    toast(`✅ Auto-upis: ${RL[rowId]} → ${score} (${playerName})`,'ok');
+    toast(`✅ Auto-upis: ${RL[rowId]}  ${score} (${playerName})`,'ok');
     // flash the cell
     setTimeout(()=>{
       document.querySelectorAll(`[data-auto="${col}-${rowId}"]`).forEach(el=>{el.classList.add('auto-flash');});
@@ -1542,12 +1539,12 @@ function mobNotify(tab){
           <div class="help-score-row"><b>Bonus</b><span>+30 bod. ako je zbroj 1–6 ≥ 60</span></div>
           <div class="help-score-row"><b>Max / Min</b><span>Zbroj svih kockica</span></div>
           <div class="help-score-row"><b>(M−m)×1</b><span>Razlika Max i Min × broj jedinica</span></div>
-          <div class="help-score-row"><b>Tris</b><span>3 iste → zbroj + 10</span></div>
-          <div class="help-score-row"><b>Skala mala</b><span>1-2-3-4-5 → 35 bod.</span></div>
-          <div class="help-score-row"><b>Skala velika</b><span>2-3-4-5-6 → 42 bod.</span></div>
-          <div class="help-score-row"><b>Full</b><span>3+2 iste → zbroj + 30</span></div>
-          <div class="help-score-row"><b>Poker</b><span>4 iste → zbroj + 40</span></div>
-          <div class="help-score-row"><b>Jamb</b><span>5 istih → zbroj + 50</span></div>
+          <div class="help-score-row"><b>Tris</b><span>3 iste  zbroj + 10</span></div>
+          <div class="help-score-row"><b>Skala mala</b><span>1-2-3-4-5  35 bod.</span></div>
+          <div class="help-score-row"><b>Skala velika</b><span>2-3-4-5-6  42 bod.</span></div>
+          <div class="help-score-row"><b>Full</b><span>3+2 iste  zbroj + 30</span></div>
+          <div class="help-score-row"><b>Poker</b><span>4 iste  zbroj + 40</span></div>
+          <div class="help-score-row"><b>Jamb</b><span>5 istih  zbroj + 50</span></div>
         </div>
       </div>
 
