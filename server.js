@@ -225,9 +225,15 @@ io.on('connection',(socket)=>{
 
     // Ako profil postoji, provjeri je li netko trenutno online s tim imenom
     if (existing) {
-      const takenOnline = Object.values(players).find(p => p.name.toLowerCase() === key);
+      const takenOnline = Object.values(players).find(p => p.name.toLowerCase() === key && p.id !== socket.id);
       if (takenOnline) {
-        return socket.emit('error', `Ime "${trimmed}" je trenutno zauzeto — netko je već prijavljen s tim imenom!`);
+        // Provjeri je li taj socket još stvarno povezan
+        const takenSocket = io.sockets.sockets.get(takenOnline.id);
+        if (takenSocket && takenSocket.connected) {
+          return socket.emit('error', `Ime "${trimmed}" je trenutno zauzeto — netko je već prijavljen s tim imenom!`);
+        }
+        // Stari socket više nije connected — očisti ga
+        delete players[takenOnline.id];
       }
     }
 
