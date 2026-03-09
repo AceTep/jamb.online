@@ -447,6 +447,7 @@ table.sc tbody td:first-child{text-align:left;padding-left:12px;color:var(--text
       <div class="wait-chips" id="waitChips"></div>
     </div>
     <div id="startWrap" style="display:none"><button class="btn-start" onclick="doStartGame()" data-i18n="wait.start">🎲 Pokreni igru </button></div>
+    <div id="addBotWrap" style="display:none;margin-top:8px"><button class="btn-sm" onclick="doAddBot()" style="background:var(--s2);border:1px solid var(--border);color:var(--muted);width:100%">🤖 Dodaj bota</button></div>
     <div id="waitHint" style="color:var(--muted);font-size:13px;font-style:italic" data-i18n="wait.hint">Čekanje na hosta…</div>
     <button class="btn-sm" onclick="doLeaveRoom()" style="margin-top:4px" data-i18n="wait.leave">← Napusti sobu</button>
   </div>
@@ -970,7 +971,8 @@ function doCreateRoom(){const name=document.getElementById('newRoomName').value.
 function doJoinRoom(id){socket.emit('joinRoom',id);}
 function doJoinByCode(){const code=document.getElementById('joinCodeInput').value.trim().toUpperCase();if(!code)return toast(t('toast.codeRequired'),'err');socket.emit('joinRoom',code);document.getElementById('joinCodeInput').value='';}
 function doStartGame(){socket.emit('startGame',myRoomId);}
-function copyRoomCode(){const code=document.getElementById('roomCode').textContent;navigator.clipboard.writeText(code).then(()=>{const h=document.getElementById('copyHint');h.style.opacity='1';clearTimeout(h._t);h._t=setTimeout(()=>h.style.opacity='0',2000);});}
+function doAddBot(){socket.emit('addBot',myRoomId);}
+function doKickBot(botId){socket.emit('removeBot',{rid:myRoomId,botId});}function copyRoomCode(){const code=document.getElementById('roomCode').textContent;navigator.clipboard.writeText(code).then(()=>{const h=document.getElementById('copyHint');h.style.opacity='1';clearTimeout(h._t);h._t=setTimeout(()=>h.style.opacity='0',2000);});}
 function doLeaveRoom(){socket.emit('leaveRoom',myRoomId);myRoomId='';show('lobbyScreen');socket.emit('getRooms');if(myToken)socket.emit('ping',myToken);}
 // ── ZVUK (Web Audio API) ─────────────────────────────────────────
 let _muted = localStorage.getItem('jambMuted')==='1';
@@ -1188,10 +1190,16 @@ function renderWait(room){
   const isHost=room.host===socket.id;
   document.getElementById('startWrap').style.display=isHost?'block':'none';
   document.getElementById('waitHint').style.display=isHost?'none':'block';
-  document.getElementById('waitChips').innerHTML=room.players.map((p,i)=>
-    `<div class="pchip ${p.id===room.host?'is-host':''}">
-      <div style="width:22px;height:22px;border-radius:50%;background:${PC[i%PC.length]};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:9px">${esc(p.name[0].toUpperCase())}</div>
-      ${esc(p.name)}</div>`).join('');
+  const canAddBot = isHost && room.players.length < room.maxPlayers && room.maxPlayers > 1;
+  document.getElementById('addBotWrap').style.display=canAddBot?'block':'none';
+  document.getElementById('waitChips').innerHTML=room.players.map((p,i)=>{
+    const kickBtn = (isHost && p.isBot)
+      ? `<button onclick="doKickBot('${esc(p.id)}')" title="Ukloni bota" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:0 2px;line-height:1;opacity:.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.6">✕</button>`
+      : '';
+    return `<div class="pchip ${p.id===room.host?'is-host':''}" style="justify-content:flex-start">
+      <div style="width:22px;height:22px;border-radius:50%;background:${PC[i%PC.length]};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:9px;flex-shrink:0">${esc(p.name[0].toUpperCase())}</div>
+      <span>${esc(p.name)}${p.isBot?' <span style="font-size:9px;opacity:.6">(bot)</span>':''}</span>${kickBtn}</div>`;
+  }).join('');
 }
 
 // ── RENDER GAME ────────────────────────────────────────────────────

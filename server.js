@@ -199,18 +199,187 @@ const roomTimers = new Map();
 function getRoomList() {
   return Object.values(rooms).map(r=>({id:r.id,name:r.name,players:r.players.length,maxPlayers:r.maxPlayers,numDice:r.numDice||5,state:r.state,playerNames:r.players.map(p=>p.name)}));
 }
+function hasRealPlayer(room) {
+  return room.players.some(p => !BOT_IDS.has(p.id));
+}
+
+function closeRoomBotOnly(rid) {
+  const room = rooms[rid];
+  if (!room) return;
+  console.log(`🗑️  Soba ${rid} zatvorena — nema pravih igrača`);
+  io.to(rid).emit('roomClosed', { reason: 'Svi pravi igrači su napustili sobu.' });
+  io.socketsLeave(rid);
+  delete rooms[rid];
+  saveRooms();
+  io.emit('roomList', getRoomList());
+}
+
 function handleLeave(socket, rid) {
   const room=rooms[rid]; if(!room) return;
   socket.leave(rid);
   room.players=room.players.filter(p=>p.id!==socket.id);
   if(room.players.length===0){delete rooms[rid];}
-  else{
-    if(room.host===socket.id) room.host=room.players[0].id;
+  else if(!hasRealPlayer(room)){
+    // Ostali su samo botovi — zatvori sobu
+    closeRoomBotOnly(rid);
+    return;
+  } else{
+    if(room.host===socket.id){
+      // Novi host = prvi pravi igrač
+      const firstReal = room.players.find(p=>!BOT_IDS.has(p.id));
+      room.host = firstReal ? firstReal.id : room.players[0].id;
+    }
     if(room.currentPlayerIndex>=room.players.length) room.currentPlayerIndex=0;
     io.to(rid).emit('roomUpdate',room);
   }
   saveRooms();
   io.emit('roomList',getRoomList());
+}
+
+// ── BOT LOGIKA ────────────────────────────────────────────────────────
+const BOT_NAMES = ['🤖 Robko','🤖 Jarvis','🤖 Skippy','🤖 WALL-E','🤖 HAL','🤖 Data'];
+const BOT_IDS = new Set();
+let botCounter = 0;
+
+function newBotId() {
+  const id = 'bot_' + (++botCounter) + '_' + Math.random().toString(36).slice(2,6);
+  BOT_IDS.add(id);
+  return id;
+}
+
+function isBotTurn(room) {
+  const cur = room.players[room.currentPlayerIndex];
+  return cur && BOT_IDS.has(cur.id);
+}
+
+// Heuristika: biraj najbolji (col, row) za bota
+function botChooseScore(room) {
+  const cur = room.players[room.currentPlayerIndex];
+  const dice = room.dice;
+  const ann = room.activeAnnouncement;
+
+  // Ako je kontra aktivna i bot mora kontirati — nema izbora
+  if (ann && ann.playerId !== cur.id && cur.scorecard['kon'][ann.rowId] === undefined) {
+    const score = scoreDice(ann.rowId, dice);
+    console.log(`🤖 [${cur.name}] KONTRA obveza → kon/${ann.rowId} | kockice: [${dice}] → ${score}`);
+    return { col: 'kon', row: ann.rowId };
+  }
+
+  let best = null, bestVal = -Infinity;
+
+  for (const col of COLS) {
+    for (const row of ROW_ORDER) {
+      if (!canScore(col, row, cur.scorecard)) continue;
+      if (col === 'naj') continue; // bot ne najavljuje
+      if (col === 'kon') continue; // kontra samo kad je obveza (gore)
+      let val = scoreDice(row, dice);
+      // Penaliziraj min stupac za visoke vrijednosti (želi min što manji)
+      if (col === 'd' || row === 'min') val = -val + 50;
+      if (val > bestVal) { bestVal = val; best = { col, row }; }
+    }
+  }
+
+  if (best) {
+    const score = scoreDice(best.row, dice);
+    console.log(`🤖 [${cur.name}] upisuje ${best.col}/${best.row} | kockice: [${dice}] → ${score}`);
+  } else {
+    console.log(`🤖 [${cur.name}] nema slobodnog polja!`);
+  }
+  return best;
+}
+
+function botHoldDice(room) {
+  // Drži kockice koje doprinose najboljoj kombinaciji
+  const dice = room.dice;
+  const c = Array(7).fill(0);
+  dice.forEach(d => c[d]++);
+
+  // Ako ima 3+ iste — drži ih (tris, poker, jamb)
+  const triVal = c.findIndex((v,i) => i > 0 && v >= 3);
+  if (triVal > 0) return dice.map(d => d === triVal);
+
+  // Ako ima par — drži ga
+  const pairVal = c.findIndex((v,i) => i > 0 && v >= 2);
+  if (pairVal > 0) return dice.map(d => d === pairVal);
+
+  // Inače drži visoke vrijednosti (4,5,6)
+  return dice.map(d => d >= 4);
+}
+
+function scheduleBotTurn(rid) {
+  const room = rooms[rid];
+  if (!room || room.state !== 'playing') return;
+  if (!isBotTurn(room)) return;
+
+  // Botov potez — s malim kašnjenjem da izgleda prirodnije
+  setTimeout(() => {
+    const room = rooms[rid];
+    if (!room || room.state !== 'playing' || !isBotTurn(room)) return;
+
+    // Baci kockice (do 3 puta)
+    const doRoll = (rollsLeft) => {
+      if (rollsLeft <= 0) {
+        // Odaberi polje
+        const choice = botChooseScore(room);
+        if (choice) {
+          // Simuliraj scoreCategory
+          const cur = room.players[room.currentPlayerIndex];
+          if (!room.activeDice) room.activeDice = Array(room.numDice||5).fill(true);
+          const activeDice = room.dice.filter((_,i) => room.activeDice[i]);
+          cur.scorecard[choice.col][choice.row] = scoreDice(choice.row, activeDice);
+          updateTotals(cur);
+
+          // Kontra handling — provjeri je li svi kontirali pa ugasi activeAnnouncement
+          if (choice.col === 'kon' && room.activeAnnouncement) {
+            const aid = room.activeAnnouncement.playerId;
+            const rid2 = room.activeAnnouncement.rowId;
+            const allDone = room.players.filter(p => p.id !== aid).every(p => p.scorecard['kon'][rid2] !== undefined);
+            if (allDone) room.activeAnnouncement = null;
+          }
+
+          if (room.players.every(p => isGameOver(p.scorecard))) {
+            room.state = 'finished';
+            const maxScore = Math.max(...room.players.map(p => p.grandTotal));
+            room.players.forEach(rp => {
+              if (!BOT_IDS.has(rp.id)) {
+                const jambs = Object.values(rp.scorecard).reduce((sum, col) => sum + (col['jamb'] > 0 ? 1 : 0), 0);
+                updateProfileStats(rp.name, { won: rp.grandTotal === maxScore, score: rp.grandTotal, jambs });
+              }
+            });
+            saveRooms();
+            io.to(rid).emit('gameOver', room);
+            io.emit('roomList', getRoomList());
+            return;
+          }
+          advanceTurn(room);
+          saveRooms();
+          io.to(rid).emit('roomUpdate', room);
+          // Ako je opet bot na redu
+          scheduleBotTurn(rid);
+        }
+        return;
+      }
+
+      // Baci
+      room.dice = room.dice.map((d,i) => room.heldDice[i] ? d : rollN(1)[0]);
+      room.rollsLeft--;
+      room.hasRolled = true;
+      io.to(rid).emit('roomUpdate', room);
+
+      // Drži kockice nakon 1. i 2. bacanja
+      if (rollsLeft > 1) {
+        const held = botHoldDice(room);
+        room.heldDice = held;
+        io.to(rid).emit('roomUpdate', room);
+      }
+
+      // Sljedeće bacanje ili završi potez
+      const nextDelay = 700 + Math.random() * 500;
+      setTimeout(() => doRoll(rollsLeft - 1), nextDelay);
+    };
+
+    doRoll(room.rollsLeft);
+  }, 1200 + Math.random() * 800);
 }
 
 io.on('connection',(socket)=>{
@@ -362,6 +531,40 @@ io.on('connection',(socket)=>{
     room.state='playing'; room.currentPlayerIndex=0; room.round=1;
     room.activeAnnouncement=null; Object.assign(room,newTurnState(room.numDice));
     io.to(rid).emit('gameStarted',room); io.emit('roomList',getRoomList()); saveRooms();
+    // Ako je prvi na redu bot, pokreni bot potez
+    scheduleBotTurn(rid);
+  });
+
+  socket.on('addBot',(rid)=>{
+    const room=rooms[rid];
+    if(!room||room.host!==socket.id) return;
+    if(room.state!=='lobby') return socket.emit('error','Botovi se mogu dodati samo u čekaonici!');
+    if(room.players.length>=room.maxPlayers) return socket.emit('error','Soba je puna!');
+    // Odaberi ime bota koje nije već u sobi
+    const usedNames = room.players.map(p=>p.name);
+    const availName = BOT_NAMES.find(n=>!usedNames.includes(n)) || `🤖 Bot${room.players.length+1}`;
+    const botId = newBotId();
+    const bot = newPlayer(botId, availName, null);
+    bot.isBot = true;
+    room.players.push(bot);
+    touchRoom(rid);
+    io.to(rid).emit('roomUpdate',room);
+    io.emit('roomList',getRoomList());
+    saveRooms();
+  });
+
+  socket.on('removeBot',({rid, botId})=>{
+    const room=rooms[rid];
+    if(!room||room.host!==socket.id) return;
+    if(room.state!=='lobby') return socket.emit('error','Ne možeš ukloniti bota za vrijeme igre!');
+    const botIdx = room.players.findIndex(p => p.id === botId && BOT_IDS.has(p.id));
+    if(botIdx === -1) return;
+    room.players.splice(botIdx, 1);
+    if(room.currentPlayerIndex>=room.players.length) room.currentPlayerIndex=0;
+    touchRoom(rid);
+    io.to(rid).emit('roomUpdate',room);
+    io.emit('roomList',getRoomList());
+    saveRooms();
   });
 
   socket.on('announce',({roomId,rowId})=>{
@@ -480,6 +683,8 @@ io.on('connection',(socket)=>{
     advanceTurn(room);
     saveRooms();
     io.to(roomId).emit('roomUpdate',room);
+    // Ako je bot na redu, pokreni bot potez
+    scheduleBotTurn(roomId);
   });
 
   socket.on('chatMessage',({roomId,text})=>{
@@ -541,6 +746,14 @@ io.on('connection',(socket)=>{
             }, 30 * 1000));
           } else {
             io.to(room.id).emit('playerOffline', { socketId: socket.id, name: p.name });
+            // Provjeri ostaju li samo botovi — ako da, zatvori odmah
+            const remainingReal = room.players.filter(rp => rp.id !== socket.id && !BOT_IDS.has(rp.id));
+            if (remainingReal.length === 0) {
+              const rid = room.id;
+              delete players[socket.id];
+              closeRoomBotOnly(rid);
+              return;
+            }
             // Ako je owner u lobbyu — pokreni 20s timer za gašenje sobe
             if (room.state === 'lobby' && room.hostProfileToken === p.profileToken) {
               const rid = room.id;
