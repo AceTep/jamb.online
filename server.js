@@ -237,7 +237,7 @@ function handleLeave(socket, rid) {
 }
 
 // ── BOT LOGIKA ────────────────────────────────────────────────────────
-const BOT_NAMES = ['🤖 Robko','🤖 Jarvis','🤖 Skippy','🤖 WALL-E','🤖 HAL','🤖 Data'];
+const BOT_NAMES = ['Robko','Jarvis','Skippy','WALL-E','HAL','Data'];
 const BOT_IDS = new Set();
 let botCounter = 0;
 
@@ -253,57 +253,444 @@ function isBotTurn(room) {
 }
 
 // Heuristika: biraj najbolji (col, row) za bota
-function botChooseScore(room) {
-  const cur = room.players[room.currentPlayerIndex];
+// ── BOT AI — Greedy heuristika ───────────────────────────────────────
+//
+// botHoldDice: pravila prioriteta za zadržavanje kockica
+// botChooseScore: strateški odabir polja i stupca
+//
+// Prioriteti zadržavanja:
+//   jamb (5) > poker (4) > full (3+2) > tris (3) > skala5 > skala4 > par > visoke
+//
+// Prioriteti stupca:
+//   r1-r6: g prvi (bonus), onda sl, onda d
+//   kombinacije: d prvi (otvara redosljed odozgo), onda sl
+//   max/min: bilo koji slobodni
+
+// ── Analiza kockica ───────────────────────────────────────────────────
+
+function analyseDice(dice) {
+  const c = Array(7).fill(0);
+  dice.forEach(d => c[d]++);
+  const maxCount = Math.max(...c.slice(1));
+  const maxVal   = c.indexOf(maxCount, 1);
+
+  // Grupiraj vrijednosti po broju pojavljivanja
+  const groups = c.map((cnt, val) => ({ val, cnt })).filter(g => g.val > 0 && g.cnt > 0);
+  groups.sort((a, b) => b.cnt - a.cnt || b.val - a.val);
+
+  const hasJamb    = maxCount >= 5;
+  const hasPoker   = maxCount >= 4;
+  const hasTris    = maxCount >= 3;
+  const hasFull    = groups.length >= 2 && groups[0].cnt === 3 && groups[1].cnt === 2;
+  const has2para   = groups.length >= 2 && groups[0].cnt >= 2 && groups[1].cnt >= 2;
+
+  // Skala mala [1-5] i velika [2-6] — koliko elemenata niza imamo
+  const skalaMalaHave   = [1,2,3,4,5].filter(n => c[n] > 0);
+  const skalaVelikaHave = [2,3,4,5,6].filter(n => c[n] > 0);
+
+  return { c, maxCount, maxVal, groups, hasJamb, hasPoker, hasTris, hasFull, has2para, skalaMalaHave, skalaVelikaHave };
+}
+
+// ── Koji stupci su slobodni za dani red ───────────────────────────────
+
+function freeColsForRow(row, scorecard) {
+  return COLS.filter(col => col !== 'naj' && col !== 'kon' && canScore(col, row, scorecard));
+}
+
+function hasAnyFree(row, scorecard) {
+  return freeColsForRow(row, scorecard).length > 0;
+}
+
+// ── Odabir kockica za zadržati (greedy) ───────────────────────────────
+
+function botHoldDice(room) {
   const dice = room.dice;
+  const cur  = room.players[room.currentPlayerIndex];
+  const sc   = cur.scorecard;
+  const rollsLeft = room.rollsLeft;
+  const a    = analyseDice(dice);
+
+  let keepVals = null;
+  let reason   = '';
+
+  // ── Kontra obveza: fokusiraj bacanja na taj red ───────────────────
+  // Ako je aktivan announcement i bot mora kontirati, drži kockice
+  // koje su relevantne za taj red (npr. r1 → drži jedinice)
   const ann = room.activeAnnouncement;
-
-  // Ako je kontra aktivna i bot mora kontirati — nema izbora
-  if (ann && ann.playerId !== cur.id && cur.scorecard['kon'][ann.rowId] === undefined) {
-    const score = scoreDice(ann.rowId, dice);
-    console.log(`🤖 [${cur.name}] KONTRA obveza → kon/${ann.rowId} | kockice: [${dice}] → ${score}`);
-    return { col: 'kon', row: ann.rowId };
-  }
-
-  let best = null, bestVal = -Infinity;
-
-  for (const col of COLS) {
-    for (const row of ROW_ORDER) {
-      if (!canScore(col, row, cur.scorecard)) continue;
-      if (col === 'naj') continue; // bot ne najavljuje
-      if (col === 'kon') continue; // kontra samo kad je obveza (gore)
-      let val = scoreDice(row, dice);
-      // Penaliziraj min stupac za visoke vrijednosti (želi min što manji)
-      if (col === 'd' || row === 'min') val = -val + 50;
-      if (val > bestVal) { bestVal = val; best = { col, row }; }
+  // Fokusiraj i za vlastitu najavu i za kontra obvezu
+  const needFocus = ann && (
+    ann.playerId === cur.id ||
+    (ann.playerId !== cur.id && sc['kon'][ann.rowId] === undefined)
+  );
+  if (needFocus) {
+    const rowId = ann.rowId;
+    const nm = {r1:1,r2:2,r3:3,r4:4,r5:5,r6:6};
+    if (nm[rowId] !== undefined) {
+      // Gornji red — drži što više kockica te vrijednosti
+      const num = nm[rowId];
+      keepVals = dice.filter(d => d === num);
+      reason = `kontra fokus na ${rowId} (${keepVals.length}x${num})`;
+    } else if (rowId === 'tris' || rowId === 'poker' || rowId === 'jamb') {
+      // Drži najbrojniju vrijednost
+      keepVals = Array(Math.min(a.maxCount, rowId==='tris'?3:rowId==='poker'?4:5)).fill(a.maxVal);
+      reason = `kontra fokus na ${rowId} (${a.maxCount}x${a.maxVal})`;
+    } else if (rowId === 'full') {
+      if (a.hasFull) keepVals = dice.slice();
+      else if (a.hasTris) {
+        keepVals = Array(3).fill(a.groups[0].val);
+        if (a.groups[1]?.cnt >= 2) keepVals.push(a.groups[1].val, a.groups[1].val);
+      } else if (a.has2para) {
+        keepVals = []; let cnt = 0;
+        for (const g of a.groups) { if (g.cnt >= 2 && cnt < 2) { keepVals.push(g.val, g.val); cnt++; } }
+      }
+      reason = `kontra fokus na full`;
+    } else if (rowId === 'skala_mala') {
+      const seen = new Set(); keepVals = [];
+      for (const d of dice) { if ([1,2,3,4,5].includes(d) && !seen.has(d)) { seen.add(d); keepVals.push(d); } }
+      reason = `kontra fokus na skala_mala (${keepVals.length}/5)`;
+    } else if (rowId === 'skala_velika') {
+      const seen = new Set(); keepVals = [];
+      for (const d of dice) { if ([2,3,4,5,6].includes(d) && !seen.has(d)) { seen.add(d); keepVals.push(d); } }
+      reason = `kontra fokus na skala_velika (${keepVals.length}/5)`;
+    } else if (rowId === 'max') {
+      keepVals = dice.filter(d => d >= 4);
+      reason = `kontra fokus na max (drzi visoke)`;
+    } else if (rowId === 'min') {
+      keepVals = dice.filter(d => d <= 2);
+      reason = `kontra fokus na min (drzi niske)`;
+    }
+    if (keepVals !== null) {
+      const keptCount = Array(7).fill(0);
+      keepVals.forEach(d => keptCount[d]++);
+      const held = dice.map(d => { if (keptCount[d] > 0) { keptCount[d]--; return true; } return false; });
+      console.log(` [${cur.name}] KONTRA hold: [${dice.filter((_,i)=>held[i]).join(',')}] od [${dice.join(',')}] — ${reason}`);
+      return held;
     }
   }
 
-  if (best) {
-    const score = scoreDice(best.row, dice);
-    console.log(`🤖 [${cur.name}] upisuje ${best.col}/${best.row} | kockice: [${dice}] → ${score}`);
-  } else {
-    console.log(`🤖 [${cur.name}] nema slobodnog polja!`);
+  // 1. Jamb (5 istih) — zadrži sve
+  if (a.hasJamb) {
+    keepVals = [a.maxVal, a.maxVal, a.maxVal, a.maxVal, a.maxVal];
+    reason = `jamb ${a.maxVal}x5`;
+
+  // 2. Poker (4 iste) — zadrži 4
+  } else if (a.hasPoker && hasAnyFree('poker', sc)) {
+    keepVals = Array(4).fill(a.maxVal);
+    reason = `poker ${a.maxVal}x4`;
+
+  // 3. Full house — zadrži sve 5
+  } else if (a.hasFull && hasAnyFree('full', sc)) {
+    keepVals = dice.slice(); // drži sve
+    reason = `full ${a.groups[0].val}x3+${a.groups[1].val}x2`;
+
+  // 4. Tris — ali SAMO ako je vrijedno upisati (provjeri slobodna polja)
+  } else if (a.hasTris) {
+    const tv = a.groups[0].val; // vrijednost trisa
+    const canUseTris    = hasAnyFree('tris', sc);
+    const canUsePoker   = hasAnyFree('poker', sc);
+    const canUseJamb    = hasAnyFree('jamb', sc);
+    const canUseFull    = hasAnyFree('full', sc);
+    const canUseUpper   = hasAnyFree(`r${tv}`, sc);
+    if (canUseTris || canUsePoker || canUseJamb || canUseFull || canUseUpper) {
+      keepVals = Array(3).fill(tv);
+      reason = `tris ${tv}x3`;
+      // Ako možemo ići na full, zadrži i eventualni par
+      if (canUseFull && a.groups.length >= 2 && a.groups[1].cnt >= 2) {
+        keepVals = [...keepVals, ...Array(2).fill(a.groups[1].val)];
+        reason += ` + par ${a.groups[1].val} (full attempt)`;
+      }
+    }
   }
-  return best;
+
+  // 5. Skala mala [1-5] — samo ako je dovoljno isplativo
+  // Šanse za kompletiranje: 5/5=100%, 4/5 s 2 bac=~30%, 4/5 s 1 bac=~16%, 3/5=prenisko
+  if (!keepVals && hasAnyFree('skala_mala', sc)) {
+    const have = a.skalaMalaHave;
+    if (have.length === 5) {
+      keepVals = dice.slice();
+      reason = 'skala_mala kompletna';
+    } else if (have.length >= 4) {
+      // Usporedi EV skale s najboljom alternativom (par u gornjem stupcu)
+      const bestPairVal = (() => {
+        for (let n = 6; n >= 1; n--) if (a.c[n] >= 2 && hasAnyFree(`r${n}`, sc)) return n * 2;
+        return 0;
+      })();
+      // EV skale male: ~35 * šansa. 4/5 s rollsLeft bacanja
+      const skalaEV = rollsLeft >= 2 ? 35 * 0.30 : 35 * 0.16;
+      if (skalaEV > bestPairVal || bestPairVal === 0) {
+        const seen = new Set(); keepVals = [];
+        for (const d of dice) { if ([1,2,3,4,5].includes(d) && !seen.has(d)) { seen.add(d); keepVals.push(d); } }
+        reason = `skala_mala ${have.length}/5 (EV=${skalaEV.toFixed(0)} vs par=${bestPairVal})`;
+      }
+    }
+    // 3/5 — preskačemo, preniski EV
+  }
+
+  // 6. Skala velika [2-6] — isti princip
+  if (!keepVals && hasAnyFree('skala_velika', sc)) {
+    const have = a.skalaVelikaHave;
+    if (have.length === 5) {
+      keepVals = dice.slice();
+      reason = 'skala_velika kompletna';
+    } else if (have.length >= 4) {
+      const bestPairVal = (() => {
+        for (let n = 6; n >= 1; n--) if (a.c[n] >= 2 && hasAnyFree(`r${n}`, sc)) return n * 2;
+        return 0;
+      })();
+      const skalaEV = rollsLeft >= 2 ? 42 * 0.30 : 42 * 0.16;
+      if (skalaEV > bestPairVal || bestPairVal === 0) {
+        const seen = new Set(); keepVals = [];
+        for (const d of dice) { if ([2,3,4,5,6].includes(d) && !seen.has(d)) { seen.add(d); keepVals.push(d); } }
+        reason = `skala_velika ${have.length}/5 (EV=${skalaEV.toFixed(0)} vs par=${bestPairVal})`;
+      }
+    }
+  }
+
+  // 7. Dva para — zadrži oba (pokušaj full)
+  if (!keepVals && a.has2para) {
+    keepVals = [];
+    let cnt = 0;
+    for (const g of a.groups) {
+      if (g.cnt >= 2 && cnt < 2) { keepVals.push(g.val, g.val); cnt++; }
+    }
+    reason = `2 para: ${keepVals.join(',')}`;
+  }
+
+  // 8. Par — zadrži par
+  if (!keepVals && a.maxCount === 2) {
+    keepVals = [a.maxVal, a.maxVal];
+    reason = `par ${a.maxVal}x2`;
+  }
+
+  // 9. Gornji stupac — ako imamo 2+ iste i g/r{n} slobodan, vrijedi čuvati
+  if (!keepVals) {
+    // Traži broj koji ima 2+ i g stupac slobodan
+    for (let num = 6; num >= 1; num--) {
+      if (a.c[num] >= 2 && hasAnyFree(`r${num}`, sc)) {
+        keepVals = Array(a.c[num]).fill(num);
+        reason = `gornji r${num} ${a.c[num]}x`;
+        break;
+      }
+    }
+  }
+
+  // 10. Fallback — zadrži kockice ≥ 4 za max stupac
+  if (!keepVals || keepVals.length === 0) {
+    keepVals = dice.filter(d => d >= 4);
+    reason = `fallback visoke (>=4)`;
+  }
+
+  // Mapiraj keepVals natrag na indekse originalnih kockica
+  const keptCount = Array(7).fill(0);
+  keepVals.forEach(d => keptCount[d]++);
+  const held = dice.map(d => {
+    if (keptCount[d] > 0) { keptCount[d]--; return true; }
+    return false;
+  });
+
+  const keptVals = dice.filter((_, i) => held[i]);
+  console.log(` [${cur.name}] drzi: [${keptVals.join(',')}] od [${dice.join(',')}] — ${reason}`);
+  return held;
 }
 
-function botHoldDice(room) {
-  // Drži kockice koje doprinose najboljoj kombinaciji
+// ── Odabir stupca (strateški) ─────────────────────────────────────────
+//
+// r1-r6:        g > sl > d    (g daje bonus za gornji stupac)
+// kombinacije:  d > sl        (d ide odozgo, jamb je zadnji → otvara redosljed)
+// max/min:      sl > d > g    (nema preference)
+
+function bestColForRow(row, scorecard) {
+  const numericRows = new Set(['r1','r2','r3','r4','r5','r6']);
+  const free = freeColsForRow(row, scorecard);
+  if (free.length === 0) return null;
+  if (free.length === 1) return free[0];
+
+  if (numericRows.has(row)) {
+    // g > sl > d
+    for (const col of ['g', 'sl', 'd']) if (free.includes(col)) return col;
+  } else if (row === 'max' || row === 'min') {
+    for (const col of ['sl', 'd', 'g']) if (free.includes(col)) return col;
+  } else {
+    // kombinacije (tris, full, poker, jamb, skale): d > sl > g
+    for (const col of ['d', 'sl', 'g']) if (free.includes(col)) return col;
+  }
+  return free[0];
+}
+
+// ── Odabir polja za upis ──────────────────────────────────────────────
+
+function botChooseScore(room) {
+  const cur = room.players[room.currentPlayerIndex];
+  // Koristi sve kockice — activeDice se ne koristi u greedy pristupu
   const dice = room.dice;
-  const c = Array(7).fill(0);
-  dice.forEach(d => c[d]++);
+  const sc   = cur.scorecard;
+  const ann  = room.activeAnnouncement;
+  const a    = analyseDice(dice);
 
-  // Ako ima 3+ iste — drži ih (tris, poker, jamb)
-  const triVal = c.findIndex((v,i) => i > 0 && v >= 3);
-  if (triVal > 0) return dice.map(d => d === triVal);
+  // Kontra obveza — nema izbora
+  if (ann && ann.playerId !== cur.id && sc['kon'][ann.rowId] === undefined) {
+    const score = scoreDice(ann.rowId, dice);
+    console.log(` [${cur.name}] KONTRA obveza -> kon/${ann.rowId} | [${dice}] -> ${score}`);
+    return { col: 'kon', row: ann.rowId };
+  }
 
-  // Ako ima par — drži ga
-  const pairVal = c.findIndex((v,i) => i > 0 && v >= 2);
-  if (pairVal > 0) return dice.map(d => d === pairVal);
+  // Vlastita najava — upiši u naj stupac za najavljen red
+  if (ann && ann.playerId === cur.id && canScore('naj', ann.rowId, sc)) {
+    const score = scoreDice(ann.rowId, dice);
+    console.log(` [${cur.name}] upisuje NAJAVU naj/${ann.rowId} | [${dice}] -> ${score}`);
+    return { col: 'naj', row: ann.rowId };
+  }
 
-  // Inače drži visoke vrijednosti (4,5,6)
-  return dice.map(d => d >= 4);
+  // Pomoćna: vrati { col, row, score } ili null
+  function tryRow(row) {
+    const col = bestColForRow(row, sc);
+    if (!col) return null;
+    return { col, row, score: scoreDice(row, dice) };
+  }
+
+  // ── Kombinacijska polja (samo ako stvarno imamo kombinaciju) ──────────
+
+  // Jamb (5 istih)
+  if (a.hasJamb) {
+    const r = tryRow('jamb'); if (r) { log(cur, r); return r; }
+  }
+
+  // Poker (4 iste)
+  if (a.hasPoker) {
+    const r = tryRow('poker'); if (r) { log(cur, r); return r; }
+  }
+
+  // Full house
+  if (a.hasFull) {
+    const r = tryRow('full'); if (r) { log(cur, r); return r; }
+  }
+
+  // Skala velika [2-6]
+  if (a.skalaVelikaHave.length === 5) {
+    const r = tryRow('skala_velika'); if (r) { log(cur, r); return r; }
+  }
+
+  // Skala mala [1-5]
+  if (a.skalaMalaHave.length === 5) {
+    const r = tryRow('skala_mala'); if (r) { log(cur, r); return r; }
+  }
+
+  // Tris — ali usporedi s gornjim stupcem
+  if (a.hasTris) {
+    const tv = a.groups[0].val;
+    const upperRow = `r${tv}`;
+    const upperScore = scoreDice(upperRow, dice); // npr. 3x4 = 12
+    const trisScore  = scoreDice('tris', dice);   // 3x4+10 = 22
+
+    const upperOpt = tryRow(upperRow);
+    const trisOpt  = tryRow('tris');
+
+    // Odaberi što više vrijedi (uz bonus za gornji jer otvara opcije)
+    const upperVal = upperOpt ? upperScore + 5 : -1; // +5 bonus za gornji stupac
+    const trisVal  = trisOpt  ? trisScore      : -1;
+
+    if (upperVal >= trisVal && upperOpt) { log(cur, upperOpt); return upperOpt; }
+    if (trisOpt) { log(cur, trisOpt); return trisOpt; }
+  }
+
+  // ── Gornji stupac r1-r6 — ako imamo bar 2 iste ────────────────────
+  for (let num = 6; num >= 1; num--) {
+    if (a.c[num] >= 2) {
+      const r = tryRow(`r${num}`);
+      if (r && r.score > 0) { log(cur, r); return r; }
+    }
+  }
+
+  // ── Max stupac — ako je suma visoka (>= 20) ───────────────────────
+  const sum = dice.reduce((x,y)=>x+y,0);
+  if (sum >= 20) {
+    const r = tryRow('max'); if (r) { log(cur, r); return r; }
+  }
+
+  // ── Min stupac — ako je suma niska (<= 15) ────────────────────────
+  if (sum <= 15) {
+    const r = tryRow('min'); if (r) { log(cur, r); return r; }
+  }
+
+  // ── Fallback: pronađi slobodno polje s najvećim rezultatom ───────
+  let best = null, bestScore = -Infinity;
+  for (const row of ROW_ORDER) {
+    const col = bestColForRow(row, sc);
+    if (!col) continue;
+    const score = scoreDice(row, dice);
+    const numericRows = new Set(['r1','r2','r3','r4','r5','r6']);
+    // Penaliziraj upisivanje 0 u kombinacijska polja ako ima slobodnih numeričkih
+    const hasFreeNum = ROW_ORDER.filter(r2 => numericRows.has(r2)).some(r2 => freeColsForRow(r2, sc).length > 0);
+    const penalty = (!numericRows.has(row) && row !== 'max' && row !== 'min' && score === 0 && hasFreeNum) ? 100 : 0;
+    const val = score - penalty;
+    if (val > bestScore) { bestScore = val; best = { col, row, score }; }
+  }
+
+  if (best) { log(cur, best); return best; }
+  console.log(` [${cur.name}] nema slobodnog polja!`);
+  return null;
+}
+
+function log(cur, r) {
+  console.log(` [${cur.name}] upisuje ${r.col}/${r.row} -> ${r.score}`);
+}
+
+// ── Bot najava (prije prvog bacanja) ─────────────────────────────────
+//
+// Bot odlučuje hoće li najaviti i što, na temelju:
+//   - slobodnih naj polja
+//   - EV (vrijednost × šansa uspjeha)
+//   - random faktora da ne bude 100% predvidiv
+
+function botDecideAnnounce(room) {
+  const cur = room.players[room.currentPlayerIndex];
+  const sc  = cur.scorecard;
+
+  // Ako naj stupac nije slobodan ni za jedno polje — skip
+  // Ako je kontra aktivna — bot ne najavljuje (mora kontirati)
+  if (room.activeAnnouncement) return null;
+
+  // Šanse uspjeha za svako polje (empirijske vjerojatnosti bez ikakve informacije)
+  // i bazna vrijednost polja
+  const candidates = [
+    { row: 'max',          ev: 21,  successRate: 1.00, baseChance: 0.12 },
+    { row: 'min',          ev: 14,  successRate: 1.00, baseChance: 0.10 },
+    { row: 'tris',         ev: 24,  successRate: 0.28, baseChance: 0.15 },
+    { row: 'full',         ev: 28,  successRate: 0.06, baseChance: 0.08 },
+    { row: 'poker',        ev: 50,  successRate: 0.12, baseChance: 0.10 },
+    { row: 'jamb',         ev: 65,  successRate: 0.03, baseChance: 0.05 },
+    { row: 'skala_mala',   ev: 35,  successRate: 0.03, baseChance: 0.06 },
+    { row: 'skala_velika', ev: 42,  successRate: 0.03, baseChance: 0.07 },
+    { row: 'r1',           ev:  3,  successRate: 1.00, baseChance: 0.08 },
+    { row: 'r2',           ev:  6,  successRate: 1.00, baseChance: 0.08 },
+    { row: 'r3',           ev:  9,  successRate: 1.00, baseChance: 0.09 },
+    { row: 'r4',           ev: 12,  successRate: 1.00, baseChance: 0.10 },
+    { row: 'r5',           ev: 15,  successRate: 1.00, baseChance: 0.11 },
+    { row: 'r6',           ev: 18,  successRate: 1.00, baseChance: 0.12 },
+  ];
+
+  // Filtriraj samo slobodna naj polja
+  const free = candidates.filter(c => canScore('naj', c.row, sc));
+  if (free.length === 0) return null;
+
+  // Za svako slobodno polje izračunaj "privlačnost" = EV × successRate × random
+  // Dodaj random šum da bot ne najavuje uvijek isto
+  const scored = free.map(c => ({
+    ...c,
+    score: c.ev * c.successRate * c.baseChance * (0.5 + Math.random())
+  }));
+
+  // Sortiraj i uzmi najboljeg kandidata
+  scored.sort((a, b) => b.score - a.score);
+  const best = scored[0];
+
+  // Odluči hoće li uopće najaviti — kumulativna šansa
+  // Što je viši score, to je veća šansa da se odluči za najavu
+  const announceThreshold = 0.18; // ~18% poteza završi najavom
+  if (Math.random() > announceThreshold) return null;
+
+  console.log(` [${cur.name}] NAJAVA: naj/${best.row} (score=${best.score.toFixed(2)})`);
+  return best.row;
 }
 
 function scheduleBotTurn(rid) {
@@ -315,6 +702,14 @@ function scheduleBotTurn(rid) {
   setTimeout(() => {
     const room = rooms[rid];
     if (!room || room.state !== 'playing' || !isBotTurn(room)) return;
+
+    // Razmisli o najavi prije prvog bacanja
+    const announceRow = botDecideAnnounce(room);
+    if (announceRow) {
+      const cur = room.players[room.currentPlayerIndex];
+      room.activeAnnouncement = { playerId: cur.id, rowId: announceRow };
+      io.to(rid).emit('roomUpdate', room);
+    }
 
     // Baci kockice (do 3 puta)
     const doRoll = (rollsLeft) => {
@@ -328,6 +723,12 @@ function scheduleBotTurn(rid) {
           const activeDice = room.dice.filter((_,i) => room.activeDice[i]);
           cur.scorecard[choice.col][choice.row] = scoreDice(choice.row, activeDice);
           updateTotals(cur);
+
+          // Najava handling — ako bot upisuje u naj stupac, aktiviraj announcement za ostale
+          if (choice.col === 'naj') {
+            const cur2 = room.players[room.currentPlayerIndex];
+            room.activeAnnouncement = { playerId: cur2.id, rowId: choice.row };
+          }
 
           // Kontra handling — provjeri je li svi kontirali pa ugasi activeAnnouncement
           if (choice.col === 'kon' && room.activeAnnouncement) {
@@ -360,22 +761,29 @@ function scheduleBotTurn(rid) {
         return;
       }
 
-      // Baci
+      // Baci kockice
       room.dice = room.dice.map((d,i) => room.heldDice[i] ? d : rollN(1)[0]);
       room.rollsLeft--;
       room.hasRolled = true;
       io.to(rid).emit('roomUpdate', room);
 
-      // Drži kockice nakon 1. i 2. bacanja
-      if (rollsLeft > 1) {
+      // Ako još ima bacanja, odluči što zadržati
+      if (room.rollsLeft > 0) {
         const held = botHoldDice(room);
         room.heldDice = held;
-        io.to(rid).emit('roomUpdate', room);
+        // Ako su sve kockice zadržane — nema smisla nastaviti
+        if (held.every(Boolean)) {
+          room.rollsLeft = 0;
+          io.to(rid).emit('roomUpdate', room);
+          setTimeout(() => doRoll(0), 500);
+          return;
+        }
+        const nextDelay = 700 + Math.random() * 500;
+        setTimeout(() => doRoll(rollsLeft - 1), nextDelay);
+      } else {
+        // Zadnje bacanje — idi na upis
+        setTimeout(() => doRoll(0), 500);
       }
-
-      // Sljedeće bacanje ili završi potez
-      const nextDelay = 700 + Math.random() * 500;
-      setTimeout(() => doRoll(rollsLeft - 1), nextDelay);
     };
 
     doRoll(room.rollsLeft);
@@ -542,7 +950,7 @@ io.on('connection',(socket)=>{
     if(room.players.length>=room.maxPlayers) return socket.emit('error','Soba je puna!');
     // Odaberi ime bota koje nije već u sobi
     const usedNames = room.players.map(p=>p.name);
-    const availName = BOT_NAMES.find(n=>!usedNames.includes(n)) || `🤖 Bot${room.players.length+1}`;
+    const availName = BOT_NAMES.find(n=>!usedNames.includes(n)) || ` Bot${room.players.length+1}`;
     const botId = newBotId();
     const bot = newPlayer(botId, availName, null);
     bot.isBot = true;
