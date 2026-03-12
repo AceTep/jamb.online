@@ -663,7 +663,7 @@ const I18N = {
     // Scorecard rows
     'row.r1': 'Jedinice (1)', 'row.r2': 'Dvojke (2)', 'row.r3': 'Trojke (3)',
     'row.r4': 'Četvorke (4)', 'row.r5': 'Petice (5)', 'row.r6': 'Šestice (6)',
-    'row.max': 'Maksimum', 'row.min': 'Minimum', 'row.tris': 'Tris (+10)',
+    'row.max': 'Maksimum', 'row.min': 'Minimum', 'row.dva_para': 'Dva para (+10)', 'row.tris': 'Tris (+10)',
     'row.skala_mala': 'Mala skala (35)', 'row.skala_velika': 'Velika skala (42)',
     'row.full': 'Full (+30)', 'row.poker': 'Poker (+40)', 'row.jamb': 'JAMB (+50)',
     // Toasts
@@ -727,7 +727,7 @@ const I18N = {
     'go.rematchHint': 'Waiting for host to start a new game…',
     'row.r1': 'Ones (1)', 'row.r2': 'Twos (2)', 'row.r3': 'Threes (3)',
     'row.r4': 'Fours (4)', 'row.r5': 'Fives (5)', 'row.r6': 'Sixes (6)',
-    'row.max': 'Maximum', 'row.min': 'Minimum', 'row.tris': 'Three of a kind (+10)',
+    'row.max': 'Maximum', 'row.min': 'Minimum', 'row.dva_para': 'Two pairs (+10)', 'row.tris': 'Three of a kind (+10)',
     'row.skala_mala': 'Small straight (35)', 'row.skala_velika': 'Large straight (42)',
     'row.full': 'Full house (+30)', 'row.poker': 'Four of a kind (+40)', 'row.jamb': 'JAMB (+50)',
     'toast.nameRequired': 'Enter a name!',
@@ -768,7 +768,7 @@ const ROWS=[
   {id:'r3',label:t('row.r3'),s:'upper'},{id:'r4',label:t('row.r4'),s:'upper'},
   {id:'r5',label:t('row.r5'),s:'upper'},{id:'r6',label:t('row.r6'),s:'upper'},
   {id:'max',label:t('row.max'),s:'lower'},{id:'min',label:t('row.min'),s:'lower'},
-  {id:'tris',label:t('row.tris'),s:'middle'},{id:'skala_mala',label:t('row.skala_mala'),s:'middle'},
+  {id:'dva_para',label:t('row.dva_para'),s:'middle'},{id:'tris',label:t('row.tris'),s:'middle'},{id:'skala_mala',label:t('row.skala_mala'),s:'middle'},
   {id:'skala_velika',label:t('row.skala_velika'),s:'middle'},{id:'full',label:t('row.full'),s:'middle'},
   {id:'poker',label:t('row.poker'),s:'middle'},{id:'jamb',label:t('row.jamb'),s:'middle'},
 ];
@@ -789,6 +789,7 @@ function scoreWith(rid,dice){
   const nm={r1:1,r2:2,r3:3,r4:4,r5:5,r6:6};if(nm[rid]!==undefined)return dice.filter(d=>d===nm[rid]).reduce((a,b)=>a+b,0);
   switch(rid){
     case'min':case'max':return s;
+    case'dva_para':{const pairs=c.slice(1).filter(x=>x>=2).length;return pairs>=2?s+10:0;}
     case'tris':return c.some(x=>x>=3)?s+10:0;
     case'skala_mala':return[1,2,3,4,5].every(n=>c[n]>0)?35:0;
     case'skala_velika':return[2,3,4,5,6].every(n=>c[n]>0)?42:0;
@@ -800,7 +801,7 @@ function scoreWith(rid,dice){
 function preview(rid,dice){
   // Za kombinacijske redove s >5 kockica probaj sve kombinacije od 5 i uzmi best
   const nm={r1:1,r2:2,r3:3,r4:4,r5:5,r6:6};
-  const combRows=['tris','skala_mala','skala_velika','full','poker','jamb'];
+  const combRows=['dva_para','tris','skala_mala','skala_velika','full','poker','jamb'];
   if(dice.length>5&&combRows.includes(rid)){
     let best=0;
     // Generiraj sve kombinacije od 5 od n kockica
@@ -815,7 +816,7 @@ function preview(rid,dice){
 }
 function upSum(cs){return['r1','r2','r3','r4','r5','r6'].reduce((a,k)=>a+(cs[k]??0),0);}
 function diffVal(cs){const mx=cs['max'],mn=cs['min'],o=cs['r1'];if(mx===undefined||mn===undefined||o===undefined)return null;return(mx-mn)*o;}
-function colTotal(cs){const up=upSum(cs),bonus=up>=60?30:0,diff=diffVal(cs)||0,mid=['tris','skala_mala','skala_velika','full','poker','jamb'].reduce((a,k)=>a+(cs[k]??0),0);return up+bonus+diff+mid;}
+function colTotal(cs){const up=upSum(cs),bonus=up>=60?30:0,diff=diffVal(cs)||0,mid=['dva_para','tris','skala_mala','skala_velika','full','poker','jamb'].reduce((a,k)=>a+(cs[k]??0),0);return up+bonus+diff+mid;}
 function grandTotal(sc){return COLS.reduce((a,c)=>a+colTotal(sc[c]),0);}
 
 // ── UTILS ──────────────────────────────────────────────────────────
@@ -1333,7 +1334,7 @@ function scoreBlockHTML(player,room,pIdx,isMe){
 
   // ── SREDNJI DIO
   html+=`<tr class="sc-sec"><td colspan="6">▸ Donji dio </td></tr>`;
-  ['tris','skala_mala','skala_velika','full','poker','jamb'].forEach(id=>html+=rowHTML(id,sc,canPick,canAct,dice,ann,activeAnn,player,room));
+  ['dva_para','tris','skala_mala','skala_velika','full','poker','jamb'].forEach(id=>html+=rowHTML(id,sc,canPick,canAct,dice,ann,activeAnn,player,room));
 
   // Totals
   html+=`<tr class="sc-tot"><td>Stupac</td>${COLS.map(col=>`<td>${colTotal(sc[col])}</td>`).join('')}</tr>`;
@@ -1466,7 +1467,7 @@ function showGoScorecard(pid){
   tbl+=`<tr class="sc-calc"><td style="color:var(--green2);font-size:10px">Bonus</td>${COLS.map(col=>{const s=upSum(sc[col]);const any=['r1','r2','r3','r4','r5','r6'].some(k=>sc[col]?.[k]!==undefined);if(!any)return'<td></td>';return`<td style="color:var(--green2);font-weight:700">${s>=60?'+30':s>0?''+(-(60-s)):''}</td>`;}).join('')}</tr>`;
   ['max','min'].forEach(id=>{tbl+=roRow(id);});
   tbl+=`<tr class="sc-calc"><td style="color:var(--blue2);font-size:10px">(M−m)×1</td>${COLS.map(col=>{const d=diffVal(sc[col]);return`<td style="color:var(--blue2);font-weight:${d!==null?'700':'400'}">${d!==null?d:'—'}</td>`;}).join('')}</tr>`;
-  ['tris','skala_mala','skala_velika','full','poker','jamb'].forEach(id=>{tbl+=roRow(id);});
+  ['dva_para','tris','skala_mala','skala_velika','full','poker','jamb'].forEach(id=>{tbl+=roRow(id);});
   tbl+=`<tr class="sc-tot"><td style="font-size:10px">Stupac</td>${COLS.map(col=>`<td>${colTotal(sc[col])}</td>`).join('')}</tr>`;
   tbl+=`<tr class="sc-grand"><td style="font-size:10px">🏆</td><td colspan="5" style="text-align:center">${grandTotal(sc)}</td></tr>`;
   tbl+=`</tbody></table></div>`;

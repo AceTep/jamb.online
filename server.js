@@ -9,7 +9,7 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 app.use(express.static(path.join(__dirname, 'public')));
 
-const ROW_ORDER = ['r1','r2','r3','r4','r5','r6','max','min','tris','skala_mala','skala_velika','full','poker','jamb'];
+const ROW_ORDER = ['r1','r2','r3','r4','r5','r6','max','min','dva_para','tris','skala_mala','skala_velika','full','poker','jamb'];
 const COLS = ['g','d','sl','naj','kon'];
 
 function getNextRequired(col, scorecard) {
@@ -30,6 +30,7 @@ function scoreDice(rowId, dice) {
   if (nm[rowId] !== undefined) return dice.filter(d => d === nm[rowId]).reduce((a,b)=>a+b,0);
   switch(rowId) {
     case 'min': case 'max': return s;
+    case 'dva_para': { const pairs = c.slice(1).filter(x=>x>=2).length; return pairs >= 2 ? s+10 : 0; }
     case 'tris': return c.some(x=>x>=3) ? s+10 : 0;
     case 'skala_mala': return [1,2,3,4,5].every(n=>c[n]>0) ? 35 : 0;
     case 'skala_velika': return [2,3,4,5,6].every(n=>c[n]>0) ? 42 : 0;
@@ -44,7 +45,7 @@ function calcColTotal(colSc) {
   const bonus = up >= 60 ? 30 : 0;
   const mx=colSc['max'], mn=colSc['min'], o=colSc['r1'];
   const diff = (mx!==undefined&&mn!==undefined&&o!==undefined) ? (mx-mn)*o : 0;
-  const mid = ['tris','skala_mala','skala_velika','full','poker','jamb'].reduce((a,k)=>a+(colSc[k]??0),0);
+  const mid = ['dva_para','tris','skala_mala','skala_velika','full','poker','jamb'].reduce((a,k)=>a+(colSc[k]??0),0);
   return up + bonus + diff + mid;
 }
 function updateTotals(player) {
